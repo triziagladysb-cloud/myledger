@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   CreditCard,
   ShoppingCart,
@@ -24,6 +24,8 @@ import {
   Settings,
   Download,
   Upload,
+  ChevronDown,
+  Clock,
 } from 'lucide-react';
 import {
   PieChart,
@@ -40,1002 +42,2154 @@ import {
   Line,
 } from 'recharts';
 
+const SakuraPetal = ({ style }) => (
+  <svg
+    style={style}
+    width="20"
+    height="20"
+    viewBox="0 0 20 20"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <circle cx="10" cy="10" r="8" fill="rgba(244,143,177,0.1)" />
+    <path
+      d="M10 2C10 2 13 8 10 11C7 8 10 2 10 2Z"
+      fill="rgba(244,143,177,0.15)"
+    />
+    <path
+      d="M10 2C10 2 7 8 10 11C13 8 10 2 10 2Z"
+      fill="rgba(244,143,177,0.12)"
+    />
+    <path
+      d="M2 10C2 10 8 13 11 10C8 7 2 10 2 10Z"
+      fill="rgba(206,147,216,0.1)"
+    />
+  </svg>
+);
+
 const MyLedger = () => {
   const [exchangeRate, setExchangeRate] = useState(57);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [showSettings, setShowSettings] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
-  // Initial state with pre-populated data
-  const [creditCards, setCreditCards] = useState([
-    {
-      id: 'union-rewards',
-      name: 'Union Bank Rewards Platinum',
-      balance: 0,
-      rate: 3,
-      minPayment: 0,
-      statementDay: 6,
-      interestPerMonth: 0,
-      limit: 45000,
-      notes: '',
-    },
-    {
-      id: 'union-cebu',
-      name: 'Union Bank Cebu Pacific Platinum',
-      balance: 93989.4,
-      rate: 3,
-      minPayment: 4699.47,
-      statementDay: 10,
-      interestPerMonth: 2819.68,
-      limit: 152000,
-      notes: '',
-    },
-    {
-      id: 'bpi-gold',
-      name: 'BPI Gold Rewards Card',
-      balance: 40177.43,
-      rate: 3,
-      minPayment: 2008.87,
-      statementDay: 15,
-      interestPerMonth: 1205.32,
-      limit: 136000,
-      notes: '',
-    },
-    {
-      id: 'security-wave',
-      name: 'Security Bank Wave Card',
-      balance: 66961.88,
-      rate: 2.5,
-      minPayment: 3348.09,
-      statementDay: 12,
-      interestPerMonth: 1674.05,
-      limit: 70000,
-      notes: '',
-    },
-    {
-      id: 'eastwest-jcb',
-      name: 'East West JCB Gold',
-      balance: 116900.35,
-      rate: 3,
-      minPayment: 5845.02,
-      statementDay: 10,
-      interestPerMonth: 3507.01,
-      limit: 145000,
-      notes: '',
-    },
-    {
-      id: 'rcbc-gold',
-      name: 'RCBC Gold Flex',
-      balance: 62290.36,
-      rate: 3,
-      minPayment: 3114.52,
-      statementDay: 3,
-      interestPerMonth: 1868.71,
-      limit: 73000,
-      notes: '',
-    },
-    {
-      id: 'atome',
-      name: 'Atome (Virtual/Inactive)',
-      balance: 0,
-      rate: 0,
-      minPayment: 0,
-      statementDay: 18,
-      interestPerMonth: 0,
-      limit: 81000,
-      notes: 'Inactive',
-    },
-  ]);
+  // Sakura petals positions
+  const sakuraPetals = useMemo(() => {
+    return Array.from({ length: 18 }, (_, i) => ({
+      id: i,
+      left: Math.random() * 100,
+      top: Math.random() * 100,
+      delay: Math.random() * 5,
+      size: 15 + Math.random() * 15,
+      opacity: 0.05 + Math.random() * 0.1,
+      duration: 20 + Math.random() * 10,
+    }));
+  }, []);
 
-  const [purchases, setPurchases] = useState([
-    {
-      id: 1,
-      amount: 500,
-      date: '2026-03-20',
-      card: 'union-cebu',
-      category: 'Food',
-      description: 'Groceries',
-      isNecessity: true,
-    },
-  ]);
+  // Real-time clock
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentDate(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-  const [subscriptions, setSubscriptions] = useState([
-    {
-      id: 1,
-      name: 'HBO Max',
-      amount: 199,
-      chargeDate: 27,
-      card: 'security-wave',
-      status: 'Active',
-    },
-    {
-      id: 2,
-      name: 'Canva',
-      amount: 299,
-      chargeDate: 27,
-      card: 'security-wave',
-      status: 'Active',
-    },
-    {
-      id: 3,
-      name: 'Apple TV+',
-      amount: 607.99,
-      chargeDate: 1,
-      card: 'security-wave',
-      status: 'Active',
-    },
-    {
-      id: 4,
-      name: 'Netflix',
-      amount: 625.19,
-      chargeDate: 5,
-      card: 'bpi-gold',
-      status: 'Active',
-    },
-    {
-      id: 5,
-      name: 'Spotify',
-      amount: 281.79,
-      chargeDate: 8,
-      card: 'bpi-gold',
-      status: 'Active',
-    },
-    {
-      id: 6,
-      name: 'Google One',
-      amount: 604.99,
-      chargeDate: 21,
-      card: 'bpi-gold',
-      status: 'Active',
-    },
-  ]);
-
-  const [installments, setInstallments] = useState([
-    {
-      id: 1,
-      name: 'BPI Dryer',
-      total: 25000,
-      monthlyPayment: 1041.67,
-      card: 'bpi-gold',
-      startDate: '2025-06-14',
-      totalMonths: 24,
-      interestRate: 0,
-      remaining: 15625,
-      userShare: 1,
-    },
-    {
-      id: 2,
-      name: 'BPI Mac Mini',
-      total: 38469,
-      monthlyPayment: 1602.88,
-      card: 'bpi-gold',
-      startDate: '2025-05-23',
-      totalMonths: 24,
-      interestRate: 0,
-      remaining: 22440.25,
-      userShare: 1,
-    },
-    {
-      id: 3,
-      name: 'BPI Samsung',
-      total: 47513,
-      monthlyPayment: 1979.71,
-      card: 'bpi-gold',
-      startDate: '2025-12-12',
-      totalMonths: 24,
-      interestRate: 0,
-      remaining: 41573.88,
-      userShare: 1,
-    },
-    {
-      id: 4,
-      name: "BPI Fiancé's Android Phone",
-      total: 24990,
-      monthlyPayment: 1041.25,
-      card: 'bpi-gold',
-      startDate: '2025-03-14',
-      totalMonths: 24,
-      interestRate: 0,
-      remaining: 12495,
-      userShare: 0,
-    },
-    {
-      id: 5,
-      name: 'Shopee SpayLater Christmas Gifts',
-      total: 2838.49,
-      monthlyPayment: 946.16,
-      card: null,
-      startDate: '2025-12-12',
-      totalMonths: 3,
-      interestRate: 0,
-      remaining: 946.16,
-      userShare: 1,
-      paymentType: 'cash',
-      dueDay: 5,
-    },
-    {
-      id: 6,
-      name: 'Shopee SpayLater Dr. Althea 345',
-      total: 1028.32,
-      monthlyPayment: 342.77,
-      card: null,
-      startDate: '2026-03-03',
-      totalMonths: 3,
-      interestRate: 0,
-      remaining: 342.77,
-      userShare: 1,
-      paymentType: 'cash',
-      dueDay: 5,
-    },
-    {
-      id: 7,
-      name: 'Shopee SpayLater Room Light',
-      total: 1740.22,
-      monthlyPayment: 580.07,
-      card: null,
-      startDate: '2026-03-10',
-      totalMonths: 3,
-      interestRate: 0,
-      remaining: 580.07,
-      userShare: 1,
-      paymentType: 'cash',
-      dueDay: 5,
-    },
-    {
-      id: 8,
-      name: 'Shopee SpayLater Detail Make Up',
-      total: 1001.73,
-      monthlyPayment: 333.91,
-      card: null,
-      startDate: '2026-03-13',
-      totalMonths: 3,
-      interestRate: 0,
-      remaining: 333.91,
-      userShare: 1,
-      paymentType: 'cash',
-      dueDay: 5,
-    },
-    {
-      id: 9,
-      name: 'Shopee SpayLater Ice Maker',
-      total: 3889,
-      monthlyPayment: 1296.33,
-      card: null,
-      startDate: '2026-03-22',
-      totalMonths: 3,
-      interestRate: 0,
-      remaining: 1296.33,
-      userShare: 1,
-      paymentType: 'cash',
-      dueDay: 5,
-    },
-  ]);
-
-  const [groceries, setGroceries] = useState([
-    // Vitamins
-    {
-      id: 1,
-      category: 'Vitamins',
-      name: 'Vitamin D3 & K2',
-      frequency: 'monthly',
-      frequencyDays: 30,
-      price: 975,
-      lastPurchased: '2026-03-01',
-      status: 'stocked',
-    },
-    {
-      id: 2,
-      category: 'Vitamins',
-      name: 'Met Thatione',
-      frequency: 'monthly',
-      frequencyDays: 30,
-      price: 2017,
-      lastPurchased: '2026-03-01',
-      status: 'stocked',
-    },
-    {
-      id: 3,
-      category: 'Vitamins',
-      name: 'Cranberry',
-      frequency: 'every 2 months',
-      frequencyDays: 60,
-      price: 1297,
-      lastPurchased: '2026-01-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 4,
-      category: 'Vitamins',
-      name: 'Vitamin C',
-      frequency: 'monthly',
-      frequencyDays: 30,
-      price: 280.9,
-      lastPurchased: '2026-03-01',
-      status: 'stocked',
-    },
-    {
-      id: 5,
-      category: 'Vitamins',
-      name: 'Vitamin E',
-      frequency: 'every 2 months',
-      frequencyDays: 60,
-      price: 280.9,
-      lastPurchased: '2026-01-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 6,
-      category: 'Vitamins',
-      name: 'Magnesium Pure',
-      frequency: 'every 45 days',
-      frequencyDays: 45,
-      price: 1537,
-      lastPurchased: '2026-02-10',
-      status: 'needs purchase',
-    },
-    // Skincare
-    {
-      id: 7,
-      category: 'Skincare',
-      name: 'Toner Celeteque',
-      frequency: 'quarterly',
-      frequencyDays: 90,
-      price: 194,
-      lastPurchased: '2025-12-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 8,
-      category: 'Skincare',
-      name: 'Keana Rice Pack',
-      frequency: 'every 2 months',
-      frequencyDays: 60,
-      price: 468.17,
-      lastPurchased: '2026-01-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 9,
-      category: 'Skincare',
-      name: 'Keana Rice Face Wash',
-      frequency: 'every 2 months',
-      frequencyDays: 60,
-      price: 280.9,
-      lastPurchased: '2026-01-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 10,
-      category: 'Skincare',
-      name: 'Melano CC',
-      frequency: 'yearly',
-      frequencyDays: 365,
-      price: 329.59,
-      lastPurchased: '2025-03-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 11,
-      category: 'Skincare',
-      name: 'Hada Labo',
-      frequency: 'yearly',
-      frequencyDays: 365,
-      price: 370.79,
-      lastPurchased: '2025-04-10',
-      status: 'needs purchase',
-    },
-    {
-      id: 12,
-      category: 'Skincare',
-      name: '345 Cream',
-      frequency: 'quarterly',
-      frequencyDays: 90,
-      price: 1050,
-      lastPurchased: '2025-12-15',
-      status: 'needs purchase',
-    },
-    // Toiletries
-    {
-      id: 13,
-      category: 'Toiletries',
-      name: 'Shampoo',
-      frequency: 'quarterly',
-      frequencyDays: 90,
-      price: 130.34,
-      lastPurchased: '2025-12-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 14,
-      category: 'Toiletries',
-      name: 'Deo',
-      frequency: 'quarterly',
-      frequencyDays: 90,
-      price: 178,
-      lastPurchased: '2025-12-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 15,
-      category: 'Toiletries',
-      name: 'Toothpaste',
-      frequency: 'every 4 months',
-      frequencyDays: 120,
-      price: 215,
-      lastPurchased: '2025-11-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 16,
-      category: 'Toiletries',
-      name: 'Conditioner',
-      frequency: 'quarterly',
-      frequencyDays: 90,
-      price: 130.34,
-      lastPurchased: '2025-12-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 17,
-      category: 'Toiletries',
-      name: 'Lactacyd',
-      frequency: 'every 6 months',
-      frequencyDays: 180,
-      price: 542,
-      lastPurchased: '2025-09-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 18,
-      category: 'Toiletries',
-      name: 'Safeguard',
-      frequency: 'every 6 months',
-      frequencyDays: 180,
-      price: 488,
-      lastPurchased: '2025-09-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 19,
-      category: 'Toiletries',
-      name: 'Milk Soap',
-      frequency: 'every 6 months',
-      frequencyDays: 180,
-      price: 179.03,
-      lastPurchased: '2025-09-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 20,
-      category: 'Toiletries',
-      name: 'Cotton Buds',
-      frequency: 'quarterly',
-      frequencyDays: 90,
-      price: 95,
-      lastPurchased: '2025-12-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 21,
-      category: 'Toiletries',
-      name: 'Cotton Pads',
-      frequency: 'quarterly',
-      frequencyDays: 90,
-      price: 99,
-      lastPurchased: '2025-12-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 22,
-      category: 'Toiletries',
-      name: 'Tooth Brush',
-      frequency: 'quarterly',
-      frequencyDays: 90,
-      price: 974,
-      lastPurchased: '2025-12-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 23,
-      category: 'Toiletries',
-      name: 'Napkin',
-      frequency: 'quarterly',
-      frequencyDays: 90,
-      price: 535,
-      lastPurchased: '2025-12-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 24,
-      category: 'Toiletries',
-      name: 'Dashing',
-      frequency: 'monthly',
-      frequencyDays: 30,
-      price: 800,
-      lastPurchased: '2026-03-01',
-      status: 'stocked',
-    },
-    {
-      id: 25,
-      category: 'Toiletries',
-      name: 'Haircut',
-      frequency: 'yearly',
-      frequencyDays: 365,
-      price: 800,
-      lastPurchased: '2025-03-15',
-      status: 'needs purchase',
-    },
-    {
-      id: 26,
-      category: 'Toiletries',
-      name: 'Hand Wash',
-      frequency: 'every 6 months',
-      frequencyDays: 180,
-      price: 107.87,
-      lastPurchased: '2025-09-15',
-      status: 'needs purchase',
-    },
-    // Household
-    {
-      id: 27,
-      category: 'Household',
-      name: 'Ariel Liquid 4-pack',
-      frequency: 'monthly',
-      frequencyDays: 30,
-      price: 1811,
-      lastPurchased: '2026-03-01',
-      status: 'stocked',
-    },
-    {
-      id: 28,
-      category: 'Household',
-      name: 'Ariel Powder',
-      frequency: 'monthly',
-      frequencyDays: 30,
-      price: 561,
-      lastPurchased: '2026-03-01',
-      status: 'stocked',
-    },
-    {
-      id: 29,
-      category: 'Household',
-      name: 'Downy 2-pack',
-      frequency: 'monthly',
-      frequencyDays: 30,
-      price: 838,
-      lastPurchased: '2026-03-01',
-      status: 'stocked',
-    },
-    {
-      id: 30,
-      category: 'Household',
-      name: 'Zonrox',
-      frequency: 'monthly',
-      frequencyDays: 30,
-      price: 283,
-      lastPurchased: '2026-03-01',
-      status: 'stocked',
-    },
-    {
-      id: 31,
-      category: 'Household',
-      name: 'Albatross',
-      frequency: 'monthly',
-      frequencyDays: 30,
-      price: 192,
-      lastPurchased: '2026-03-01',
-      status: 'stocked',
-    },
-  ]);
-
-  const [trips, setTrips] = useState([
-    {
-      id: 1,
-      name: 'Shanghai Trip',
-      destination: 'Shanghai, China',
-      startDate: '2026-06-01',
-      endDate: '2026-06-15',
-      expenses: [
-        {
-          id: 1,
-          type: 'flight',
-          description: 'Round trip flight',
-          amount: 0,
-          card: 'union-cebu',
-          paid: false,
-        },
-        {
-          id: 2,
-          type: 'hotel',
-          description: 'Hotel accommodation',
-          amount: 0,
-          card: 'union-cebu',
-          paid: false,
-        },
-        {
-          id: 3,
-          type: 'activities',
-          description: 'Klook activities',
-          amount: 0,
-          card: null,
-          paid: false,
-        },
-      ],
-    },
-  ]);
-
-  const [filterCard, setFilterCard] = useState('all');
-  const [filterCategory, setFilterCategory] = useState('all');
-  const [filterDateRange, setFilterDateRange] = useState({
-    start: '2026-01-01',
-    end: '2026-12-31',
+  // Initial credit cards state
+  const [creditCards, setCreditCards] = useState(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('creditCards') : null;
+    return saved
+      ? JSON.parse(saved)
+      : [
+          {
+            id: 'union-rewards',
+            name: 'Union Bank Rewards Platinum',
+            balance: 0,
+            rate: 3,
+            minPayment: 0,
+            statementDay: 6,
+            daysTodue: 17,
+            interestPerMonth: 0,
+            limit: 45000,
+            paymentHistory: [],
+          },
+          {
+            id: 'union-cebu',
+            name: 'Union Bank Cebu Pacific Platinum',
+            balance: 93989.4,
+            rate: 3,
+            minPayment: 4699.47,
+            statementDay: 10,
+            daysTodue: 21,
+            interestPerMonth: 2819.68,
+            limit: 152000,
+            paymentHistory: [],
+          },
+          {
+            id: 'bpi-gold',
+            name: 'BPI Gold Rewards Card',
+            balance: 40177.43,
+            rate: 3,
+            minPayment: 2008.87,
+            statementDay: 15,
+            daysTodue: 21,
+            interestPerMonth: 1205.32,
+            limit: 136000,
+            paymentHistory: [],
+          },
+          {
+            id: 'security-wave',
+            name: 'Security Bank Wave Card',
+            balance: 66961.88,
+            rate: 2.5,
+            minPayment: 3348.09,
+            statementDay: 12,
+            daysTodue: 25,
+            interestPerMonth: 1674.05,
+            limit: 70000,
+            paymentHistory: [],
+          },
+          {
+            id: 'eastwest-jcb',
+            name: 'East West JCB Gold',
+            balance: 116900.35,
+            rate: 3,
+            minPayment: 5845.02,
+            statementDay: 10,
+            daysTodue: 20,
+            interestPerMonth: 3507.01,
+            limit: 145000,
+            paymentHistory: [],
+          },
+          {
+            id: 'rcbc-gold',
+            name: 'RCBC Gold Flex',
+            balance: 62290.36,
+            rate: 3,
+            minPayment: 3114.52,
+            statementDay: 3,
+            daysTodue: 58,
+            interestPerMonth: 1868.71,
+            limit: 73000,
+            paymentHistory: [],
+          },
+          {
+            id: 'atome',
+            name: 'Atome (Virtual/Inactive)',
+            balance: 0,
+            rate: 0,
+            minPayment: 0,
+            statementDay: 18,
+            daysTodue: 10,
+            interestPerMonth: 0,
+            limit: 81000,
+            paymentHistory: [],
+          },
+          {
+            id: 'shopee',
+            name: 'Shopee SpayLater',
+            balance: 0,
+            rate: 0,
+            minPayment: 0,
+            statementDay: 25,
+            daysTodue: 10,
+            interestPerMonth: 0,
+            limit: 75000,
+            paymentHistory: [],
+          },
+        ];
   });
 
-  const [editingCard, setEditingCard] = useState(null);
-  const [newPurchase, setNewPurchase] = useState({
-    amount: '',
-    date: new Date().toISOString().split('T')[0],
-    card: creditCards[0]?.id || '',
-    category: 'Food',
-    description: '',
-    isNecessity: false,
+  // Savings accounts state
+  const [savingsAccounts, setSavingsAccounts] = useState(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('savingsAccounts') : null;
+    return saved
+      ? JSON.parse(saved)
+      : [
+          { id: 'bpi-savings', name: 'BPI Savings', balance: 0 },
+          { id: 'rcbc-savings', name: 'RCBC Savings', balance: 0 },
+          { id: 'unionbank-savings', name: 'UnionBank Savings', balance: 0 },
+        ];
   });
 
-  // Save to localStorage
+  // Grocery items state with days frequency
+  const [groceryItems, setGroceryItems] = useState(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('groceryItems') : null;
+    return saved
+      ? JSON.parse(saved)
+      : [
+          {
+            id: 'vitd3k2',
+            category: 'VITAMINS',
+            name: 'Vitamin D3 & K2',
+            price: 975,
+            frequencyDays: 30,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'metthioni',
+            category: 'VITAMINS',
+            name: 'Met Thatione',
+            price: 2017,
+            frequencyDays: 30,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'cranberry',
+            category: 'VITAMINS',
+            name: 'Cranberry',
+            price: 1297,
+            frequencyDays: 60,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'vitamc',
+            category: 'VITAMINS',
+            name: 'Vitamin C',
+            price: 280.9,
+            frequencyDays: 30,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'vitame',
+            category: 'VITAMINS',
+            name: 'Vitamin E',
+            price: 280.9,
+            frequencyDays: 60,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'magpure',
+            category: 'VITAMINS',
+            name: 'Magnesium Pure',
+            price: 1537,
+            frequencyDays: 45,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'tonercele',
+            category: 'SKINCARE',
+            name: 'Toner Celeteque',
+            price: 194,
+            frequencyDays: 90,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'keanarice',
+            category: 'SKINCARE',
+            name: 'Keana Rice Pack',
+            price: 468.17,
+            frequencyDays: 60,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'keanaface',
+            category: 'SKINCARE',
+            name: 'Keana Rice Face Wash',
+            price: 280.9,
+            frequencyDays: 60,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'melanocc',
+            category: 'SKINCARE',
+            name: 'Melano CC',
+            price: 329.59,
+            frequencyDays: 365,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'hadalabo',
+            category: 'SKINCARE',
+            name: 'Hada Labo',
+            price: 370.79,
+            frequencyDays: 365,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: '345cream',
+            category: 'SKINCARE',
+            name: '345 Cream',
+            price: 1050,
+            frequencyDays: 90,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'shampoo',
+            category: 'TOILETRIES',
+            name: 'Shampoo',
+            price: 130.34,
+            frequencyDays: 90,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'deo',
+            category: 'TOILETRIES',
+            name: 'Deo',
+            price: 178,
+            frequencyDays: 90,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'toothpaste',
+            category: 'TOILETRIES',
+            name: 'Toothpaste',
+            price: 215,
+            frequencyDays: 120,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'conditioner',
+            category: 'TOILETRIES',
+            name: 'Conditioner',
+            price: 130.34,
+            frequencyDays: 90,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'lactacyd',
+            category: 'TOILETRIES',
+            name: 'Lactacyd',
+            price: 542,
+            frequencyDays: 180,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'safeguard',
+            category: 'TOILETRIES',
+            name: 'Safeguard',
+            price: 488,
+            frequencyDays: 180,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'milksoap',
+            category: 'TOILETRIES',
+            name: 'Milk Soap',
+            price: 179.03,
+            frequencyDays: 180,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'cottonbuds',
+            category: 'TOILETRIES',
+            name: 'Cotton Buds',
+            price: 95,
+            frequencyDays: 90,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'cottonpads',
+            category: 'TOILETRIES',
+            name: 'Cotton Pads',
+            price: 99,
+            frequencyDays: 90,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'toothbrush',
+            category: 'TOILETRIES',
+            name: 'Tooth Brush',
+            price: 974,
+            frequencyDays: 90,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'napkin',
+            category: 'TOILETRIES',
+            name: 'Napkin',
+            price: 535,
+            frequencyDays: 90,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'dashing',
+            category: 'TOILETRIES',
+            name: 'Dashing',
+            price: 800,
+            frequencyDays: 30,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'haircut',
+            category: 'TOILETRIES',
+            name: 'Haircut',
+            price: 800,
+            frequencyDays: 365,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'handwash',
+            category: 'TOILETRIES',
+            name: 'Hand Wash',
+            price: 107.87,
+            frequencyDays: 180,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'ariel-liquid',
+            category: 'HOUSEHOLD',
+            name: 'Ariel Liquid 4-pack',
+            price: 1811,
+            frequencyDays: 30,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'ariel-powder',
+            category: 'HOUSEHOLD',
+            name: 'Ariel Powder',
+            price: 561,
+            frequencyDays: 30,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'downy',
+            category: 'HOUSEHOLD',
+            name: 'Downy 2-pack',
+            price: 838,
+            frequencyDays: 30,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'zonrox',
+            category: 'HOUSEHOLD',
+            name: 'Zonrox',
+            price: 283,
+            frequencyDays: 30,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+          {
+            id: 'albatross',
+            category: 'HOUSEHOLD',
+            name: 'Albatross',
+            price: 192,
+            frequencyDays: 30,
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+        ];
+  });
+
+  // Purchases state
+  const [purchases, setPurchases] = useState(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('purchases') : null;
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  // Travel trips state
+  const [trips, setTrips] = useState(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('trips') : null;
+    return saved
+      ? JSON.parse(saved)
+      : [
+          {
+            id: 'shanghai-2026',
+            name: 'Shanghai Trip',
+            destination: 'Shanghai, China',
+            startDate: '2026-06-15',
+            endDate: '2026-06-22',
+            notes: 'Summer vacation trip',
+            expenses: [],
+          },
+        ];
+  });
+
+  // Subscriptions state
+  const [subscriptions, setSubscriptions] = useState(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('subscriptions') : null;
+    return saved
+      ? JSON.parse(saved)
+      : [
+          {
+            id: 'hbo-max',
+            name: 'HBO Max',
+            amount: 199,
+            day: 27,
+            card: 'security-wave',
+            status: 'Active',
+          },
+          {
+            id: 'canva',
+            name: 'Canva',
+            amount: 299,
+            day: 27,
+            card: 'security-wave',
+            status: 'Active',
+          },
+          {
+            id: 'appletv',
+            name: 'Apple TV+',
+            amount: 607.99,
+            day: 1,
+            card: 'security-wave',
+            status: 'Active',
+          },
+          {
+            id: 'netflix',
+            name: 'Netflix',
+            amount: 625.19,
+            day: 5,
+            card: 'bpi-gold',
+            status: 'Active',
+          },
+          {
+            id: 'spotify',
+            name: 'Spotify',
+            amount: 281.79,
+            day: 8,
+            card: 'bpi-gold',
+            status: 'Active',
+          },
+          {
+            id: 'google-one',
+            name: 'Google One',
+            amount: 604.99,
+            day: 21,
+            card: 'bpi-gold',
+            status: 'Active',
+          },
+        ];
+  });
+
+  // Fixed bills state
+  const [fixedBills, setFixedBills] = useState(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('fixedBills') : null;
+    return saved
+      ? JSON.parse(saved)
+      : [
+          {
+            id: 'prulife',
+            name: 'PruLife Insurance',
+            amount: 3000,
+            day: 15,
+            status: 'Active',
+          },
+          {
+            id: 'globe-plan',
+            name: 'Globe Phone Plan',
+            amount: 4893.84,
+            day: 7,
+            status: 'Active',
+          },
+        ];
+  });
+
+  // Installments state
+  const [installments, setInstallments] = useState(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('installments') : null;
+    return saved
+      ? JSON.parse(saved)
+      : [
+          {
+            id: 'dryer',
+            name: 'Dryer',
+            totalAmount: 25000,
+            monthlyPayment: 1041.67,
+            months: 24,
+            startDate: '2025-06-14',
+            card: 'bpi-gold',
+            remainingBalance: 15625,
+            paid: false,
+          },
+          {
+            id: 'macmini',
+            name: 'Mac Mini',
+            totalAmount: 38469,
+            monthlyPayment: 1602.88,
+            months: 24,
+            startDate: '2025-05-23',
+            card: 'bpi-gold',
+            remainingBalance: 22440.25,
+            paid: false,
+          },
+          {
+            id: 'samsung',
+            name: 'Samsung',
+            totalAmount: 47513,
+            monthlyPayment: 1979.71,
+            months: 24,
+            startDate: '2025-12-12',
+            card: 'bpi-gold',
+            remainingBalance: 41573.88,
+            paid: false,
+          },
+          {
+            id: 'fiance-phone',
+            name: "Fiancé's Phone",
+            totalAmount: 24990,
+            monthlyPayment: 1041.25,
+            months: 24,
+            startDate: '2025-03-14',
+            card: 'bpi-gold',
+            remainingBalance: 12495,
+            paid: false,
+            shareAmount: 0,
+          },
+          {
+            id: 'christmas-gifts',
+            name: 'Christmas Gifts',
+            totalAmount: 2838.49,
+            monthlyPayment: 946.16,
+            months: 3,
+            startDate: '2025-12-01',
+            card: 'shopee',
+            remainingBalance: 0,
+            paid: true,
+          },
+          {
+            id: 'draltea345',
+            name: 'Dr. Althea 345',
+            totalAmount: 1028.32,
+            monthlyPayment: 342.77,
+            months: 3,
+            startDate: '2026-03-01',
+            card: 'shopee',
+            remainingBalance: 0,
+            paid: true,
+          },
+          {
+            id: 'roomlight',
+            name: 'Room Light',
+            totalAmount: 1740.22,
+            monthlyPayment: 580.07,
+            months: 3,
+            startDate: '2026-03-01',
+            card: 'shopee',
+            remainingBalance: 0,
+            paid: true,
+          },
+          {
+            id: 'detailmakeup',
+            name: 'Detail Make Up',
+            totalAmount: 1001.73,
+            monthlyPayment: 333.91,
+            months: 3,
+            startDate: '2026-03-01',
+            card: 'shopee',
+            remainingBalance: 0,
+            paid: true,
+          },
+          {
+            id: 'icemaker',
+            name: 'Ice Maker',
+            totalAmount: 3889,
+            monthlyPayment: 1296.33,
+            months: 3,
+            startDate: '2026-03-01',
+            card: 'shopee',
+            remainingBalance: 0,
+            paid: true,
+          },
+        ];
+  });
+
+  // Income tracking by month
+  const [monthlyIncome, setMonthlyIncome] = useState(() => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem('monthlyIncome') : null;
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // Calendar state
+  const [calendarMonth, setCalendarMonth] = useState(new Date().getMonth());
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDateEvents, setSelectedDateEvents] = useState([]);
+
+  // Save to localStorage whenever state changes
   useEffect(() => {
-    localStorage.setItem(
-      'myLedgerData',
-      JSON.stringify({
-        creditCards,
-        purchases,
-        subscriptions,
-        installments,
-        groceries,
-        trips,
-        exchangeRate,
-      })
-    );
-  }, [creditCards, purchases, subscriptions, installments, groceries, trips, exchangeRate]);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('creditCards', JSON.stringify(creditCards));
+    }
+  }, [creditCards]);
 
-  // Load from localStorage on mount
   useEffect(() => {
-    const saved = localStorage.getItem('myLedgerData');
-    if (saved) {
-      const data = JSON.parse(saved);
-      setCreditCards(data.creditCards || creditCards);
-      setPurchases(data.purchases || purchases);
-      setSubscriptions(data.subscriptions || subscriptions);
-      setInstallments(data.installments || installments);
-      setGroceries(data.groceries || groceries);
-      setTrips(data.trips || trips);
-      setExchangeRate(data.exchangeRate || exchangeRate);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('savingsAccounts', JSON.stringify(savingsAccounts));
     }
-  }, []);
+  }, [savingsAccounts]);
 
-  // Calculations
-  const totalDebt = useMemo(() => {
-    return creditCards.reduce((sum, card) => sum + card.balance, 0);
-  }, [creditCards]);
-
-  const totalLimit = useMemo(() => {
-    return creditCards.reduce((sum, card) => sum + card.limit, 0);
-  }, [creditCards]);
-
-  const totalMinPayment = useMemo(() => {
-    return creditCards.reduce((sum, card) => sum + card.minPayment, 0);
-  }, [creditCards]);
-
-  const totalInterestPerMonth = useMemo(() => {
-    return creditCards.reduce((sum, card) => sum + card.interestPerMonth, 0);
-  }, [creditCards]);
-
-  const totalSubscriptions = useMemo(() => {
-    return subscriptions.reduce((sum, sub) => sum + sub.amount, 0);
-  }, [subscriptions]);
-
-  const totalInstallments = useMemo(() => {
-    return installments.reduce((sum, inst) => sum + inst.monthlyPayment * inst.userShare, 0);
-  }, [installments]);
-
-  const monthlyIncomeUSD = useMemo(() => {
-    const moleStreetBiweekly = 816.54;
-    const moleMo = (moleStreetBiweekly * 26) / 12;
-    const archyMo = 1550;
-    return moleMo + archyMo;
-  }, []);
-
-  const monthlyIncome = useMemo(() => {
-    return monthlyIncomeUSD * exchangeRate;
-  }, [monthlyIncomeUSD, exchangeRate]);
-
-  const fixedBills = [
-    { name: 'PruLife Insurance', amount: 3000, dueDate: 15 },
-    { name: 'Globe Phone Plan', amount: 4893.84, dueDate: 7 },
-  ];
-
-  const totalFixedBills = useMemo(() => {
-    return fixedBills.reduce((sum, bill) => sum + bill.amount, 0);
-  }, []);
-
-  const spayLaterMonthly = useMemo(() => {
-    return installments
-      .filter((inst) => inst.paymentType === 'cash')
-      .reduce((sum, inst) => sum + inst.monthlyPayment * inst.userShare, 0);
-  }, [installments]);
-
-  const getDaysUntilStatementDue = (statementDay) => {
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    const statementDate = new Date(currentYear, currentMonth, statementDay);
-
-    if (statementDate < today) {
-      statementDate.setMonth(statementDate.getMonth() + 1);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('groceryItems', JSON.stringify(groceryItems));
     }
+  }, [groceryItems]);
 
-    const daysUntil = Math.ceil((statementDate - today) / (1000 * 60 * 60 * 24));
-    return Math.max(daysUntil, 1);
-  };
-
-  const getUtilizationColor = (utilization) => {
-    if (utilization <= 30) return 'bg-gradient-to-r from-green-300 to-green-500';
-    if (utilization <= 70) return 'bg-gradient-to-r from-yellow-300 to-yellow-500';
-    return 'bg-gradient-to-r from-red-300 to-red-500';
-  };
-
-  const handleAddPurchase = () => {
-    if (!newPurchase.amount || !newPurchase.card) return;
-
-    const purchase = {
-      id: Date.now(),
-      ...newPurchase,
-      amount: parseFloat(newPurchase.amount),
-    };
-
-    setPurchases([...purchases, purchase]);
-
-    const updatedCards = creditCards.map((card) => {
-      if (card.id === newPurchase.card) {
-        return { ...card, balance: card.balance + parseFloat(newPurchase.amount) };
-      }
-      return card;
-    });
-    setCreditCards(updatedCards);
-
-    setNewPurchase({
-      amount: '',
-      date: new Date().toISOString().split('T')[0],
-      card: creditCards[0]?.id || '',
-      category: 'Food',
-      description: '',
-      isNecessity: false,
-    });
-  };
-
-  const handleDeletePurchase = (id) => {
-    const purchase = purchases.find((p) => p.id === id);
-    if (purchase) {
-      const updatedCards = creditCards.map((card) => {
-        if (card.id === purchase.card) {
-          return { ...card, balance: Math.max(0, card.balance - purchase.amount) };
-        }
-        return card;
-      });
-      setCreditCards(updatedCards);
-      setPurchases(purchases.filter((p) => p.id !== id));
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('purchases', JSON.stringify(purchases));
     }
-  };
-
-  const handleUpdateCard = (id, updates) => {
-    setCreditCards(creditCards.map((card) => (card.id === id ? { ...card, ...updates } : card)));
-  };
-
-  const handleAddSubscription = () => {
-    const newSub = {
-      id: Date.now(),
-      name: 'New Subscription',
-      amount: 0,
-      chargeDate: 1,
-      card: creditCards[0]?.id || '',
-      status: 'Active',
-    };
-    setSubscriptions([...subscriptions, newSub]);
-  };
-
-  const handleDeleteSubscription = (id) => {
-    setSubscriptions(subscriptions.filter((s) => s.id !== id));
-  };
-
-  const handleAddInstallment = () => {
-    const newInst = {
-      id: Date.now(),
-      name: 'New Installment',
-      total: 0,
-      monthlyPayment: 0,
-      card: creditCards[0]?.id || '',
-      startDate: new Date().toISOString().split('T')[0],
-      totalMonths: 12,
-      interestRate: 0,
-      remaining: 0,
-      userShare: 1,
-    };
-    setInstallments([...installments, newInst]);
-  };
-
-  const handleDeleteInstallment = (id) => {
-    setInstallments(installments.filter((i) => i.id !== id));
-  };
-
-  const handleAddTrip = () => {
-    const newTrip = {
-      id: Date.now(),
-      name: 'New Trip',
-      destination: '',
-      startDate: new Date().toISOString().split('T')[0],
-      endDate: new Date().toISOString().split('T')[0],
-      expenses: [],
-    };
-    setTrips([...trips, newTrip]);
-  };
-
-  const handleDeleteTrip = (id) => {
-    setTrips(trips.filter((t) => t.id !== id));
-  };
-
-  const handleAddTripExpense = (tripId) => {
-    const updatedTrips = trips.map((trip) => {
-      if (trip.id === tripId) {
-        return {
-          ...trip,
-          expenses: [
-            ...trip.expenses,
-            {
-              id: Date.now(),
-              type: 'other',
-              description: 'New expense',
-              amount: 0,
-              card: null,
-              paid: false,
-            },
-          ],
-        };
-      }
-      return trip;
-    });
-    setTrips(updatedTrips);
-  };
-
-  const handleUpdateTripExpense = (tripId, expenseId, updates) => {
-    const updatedTrips = trips.map((trip) => {
-      if (trip.id === tripId) {
-        return {
-          ...trip,
-          expenses: trip.expenses.map((exp) => (exp.id === expenseId ? { ...exp, ...updates } : exp)),
-        };
-      }
-      return trip;
-    });
-    setTrips(updatedTrips);
-  };
-
-  const handleDeleteTripExpense = (tripId, expenseId) => {
-    const updatedTrips = trips.map((trip) => {
-      if (trip.id === tripId) {
-        return {
-          ...trip,
-          expenses: trip.expenses.filter((exp) => exp.id !== expenseId),
-        };
-      }
-      return trip;
-    });
-    setTrips(updatedTrips);
-  };
-
-  const handleMarkGroceryPurchased = (id) => {
-    const today = new Date();
-    const updatedGroceries = groceries.map((item) => {
-      if (item.id === id) {
-        return {
-          ...item,
-          lastPurchased: today.toISOString().split('T')[0],
-          status: 'stocked',
-        };
-      }
-      return item;
-    });
-    setGroceries(updatedGroceries);
-  };
-
-  const filteredPurchases = useMemo(() => {
-    return purchases.filter((p) => {
-      const cardMatch = filterCard === 'all' || p.card === filterCard;
-      const categoryMatch = filterCategory === 'all' || p.category === filterCategory;
-      const dateMatch = p.date >= filterDateRange.start && p.date <= filterDateRange.end;
-      return cardMatch && categoryMatch && dateMatch;
-    });
-  }, [purchases, filterCard, filterCategory, filterDateRange]);
-
-  const purchasesByCategory = useMemo(() => {
-    const breakdown = {};
-    purchases.forEach((p) => {
-      if (!breakdown[p.category]) breakdown[p.category] = 0;
-      breakdown[p.category] += p.amount;
-    });
-    return Object.entries(breakdown).map(([name, value]) => ({ name, value }));
   }, [purchases]);
 
-  const purchasesByCard = useMemo(() => {
-    const breakdown = {};
-    purchases.forEach((p) => {
-      const cardName =
-        creditCards.find((c) => c.id === p.card)?.name.substring(0, 15) || 'Unknown';
-      if (!breakdown[cardName]) breakdown[cardName] = 0;
-      breakdown[cardName] += p.amount;
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('trips', JSON.stringify(trips));
+    }
+  }, [trips]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('subscriptions', JSON.stringify(subscriptions));
+    }
+  }, [subscriptions]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('fixedBills', JSON.stringify(fixedBills));
+    }
+  }, [fixedBills]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('installments', JSON.stringify(installments));
+    }
+  }, [installments]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('monthlyIncome', JSON.stringify(monthlyIncome));
+    }
+  }, [monthlyIncome]);
+
+  // Calculate suggested payments using avalanche method
+  const calculateSuggestedPayments = useCallback(() => {
+    const totalMonthlyIncome = 200000; // Forecast base
+    const totalFixedBills = fixedBills.reduce((sum, bill) => sum + bill.amount, 0);
+    const totalSubscriptions = subscriptions.reduce(
+      (sum, sub) => sum + (sub.status === 'Active' ? sub.amount : 0),
+      0
+    );
+    const totalMinPayments = creditCards.reduce((sum, card) => sum + card.minPayment, 0);
+
+    const availableForDebt = totalMonthlyIncome - totalFixedBills - totalSubscriptions;
+
+    const sorted = [...creditCards]
+      .filter((card) => card.balance > 0)
+      .sort((a, b) => b.rate - a.rate);
+
+    const suggested = {};
+    sorted.forEach((card) => {
+      suggested[card.id] = card.minPayment;
     });
-    return Object.entries(breakdown).map(([name, value]) => ({ name, value }));
-  }, [purchases, creditCards]);
 
-  const COLORS = [
-    '#7c3aed',
-    '#ec4899',
-    '#8b5cf6',
-    '#f472b6',
-    '#a855f7',
-    '#f97316',
-    '#06b6d4',
-    '#10b981',
-  ];
+    if (availableForDebt > 0 && sorted.length > 0) {
+      const extra = availableForDebt - totalMinPayments;
+      if (extra > 0 && sorted[0]) {
+        suggested[sorted[0].id] = card.minPayment + extra;
+      }
+    }
 
-  const groceriesByCategory = useMemo(() => {
-    return {
-      Vitamins: groceries.filter((g) => g.category === 'Vitamins'),
-      Skincare: groceries.filter((g) => g.category === 'Skincare'),
-      Toiletries: groceries.filter((g) => g.category === 'Toiletries'),
-      Household: groceries.filter((g) => g.category === 'Household'),
+    return suggested;
+  }, [creditCards, fixedBills, subscriptions]);
+
+  // Get payment day dates for the month
+  const getPayDayDates = useCallback((month, year) => {
+    const dates = [];
+    const lastPaid = new Date(2026, 2, 27); // March 27, 2026
+    const current = new Date(year, month, 1);
+
+    let payDate = new Date(lastPaid);
+    while (payDate.getFullYear() < year || (payDate.getFullYear() === year && payDate.getMonth() < month)) {
+      payDate = new Date(payDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+    }
+
+    while (payDate.getMonth() === month && payDate.getFullYear() === year) {
+      dates.push(payDate.getDate());
+      payDate = new Date(payDate.getTime() + 14 * 24 * 60 * 60 * 1000);
+    }
+
+    return dates;
+  }, []);
+
+  // Get Archy invoice payment dates
+  const getArchyPayDates = useCallback((month, year) => {
+    const dates = [];
+    const invoiceDay = 1;
+    const paymentDay = 7; // ~5 business days
+
+    if (month === new Date().getMonth() && year === new Date().getFullYear()) {
+      dates.push(paymentDay);
+    }
+
+    return [paymentDay];
+  }, []);
+
+  // Handle date click in calendar
+  const handleDateClick = (day) => {
+    setSelectedDate(day);
+    const events = [];
+    const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    // Check for pay days
+    const payDays = getPayDayDates(calendarMonth, calendarYear);
+    if (payDays.includes(day)) {
+      events.push({
+        type: 'payday',
+        title: 'Mole Street Pay Day',
+        description: 'Biweekly salary deposit',
+        color: 'green',
+      });
+    }
+
+    // Check for Archy payment
+    if (day === 7) {
+      events.push({
+        type: 'archy',
+        title: 'Archy Payment Received',
+        description: 'Invoice payment (~5 business days after 1st)',
+        color: 'green',
+      });
+    }
+
+    // Check for subscriptions
+    subscriptions.forEach((sub) => {
+      if (sub.day === day && sub.status === 'Active') {
+        events.push({
+          type: 'subscription',
+          title: `${sub.name} - ₱${sub.amount}`,
+          description: 'Subscription charge',
+          color: 'blue',
+        });
+      }
+    });
+
+    // Check for fixed bills
+    fixedBills.forEach((bill) => {
+      if (bill.day === day) {
+        events.push({
+          type: 'bill',
+          title: `${bill.name} - ₱${bill.amount}`,
+          description: 'Fixed bill',
+          color: 'red',
+        });
+      }
+    });
+
+    // Check for statement dates
+    creditCards.forEach((card) => {
+      if (card.statementDay === day) {
+        events.push({
+          type: 'statement',
+          title: `${card.name} Statement`,
+          description: 'Credit card statement',
+          color: 'orange',
+        });
+      }
+    });
+
+    // Check for trip dates
+    trips.forEach((trip) => {
+      const tripStart = new Date(trip.startDate);
+      const tripEnd = new Date(trip.endDate);
+      const checkDate = new Date(calendarYear, calendarMonth, day);
+
+      if (checkDate >= tripStart && checkDate <= tripEnd) {
+        events.push({
+          type: 'travel',
+          title: trip.name,
+          description: `${trip.destination}`,
+          color: 'teal',
+        });
+      }
+    });
+
+    // Check for grocery dates (quarterly)
+    const months = [2, 5, 8, 11]; // March, June, September, December
+    if (months.includes(calendarMonth) && day === 30) {
+      events.push({
+        type: 'grocery',
+        title: 'Quarterly Grocery Purchase',
+        description: '₱15,000-16,000',
+        color: 'pink',
+      });
+    }
+
+    setSelectedDateEvents(events);
+  };
+
+  // Calculate card forecast
+  const calculateCardForecast = (card, forecastDate) => {
+    const daysUntilStatement = calculateDaysUntil(new Date(), card.statementDay);
+    const dailyInterest = (card.balance * (card.rate / 100)) / 30;
+    const forecastedBalance = card.balance + dailyInterest * daysUntilStatement;
+    return Math.max(0, forecastedBalance);
+  };
+
+  const calculateDaysUntil = (from, dayOfMonth) => {
+    const today = new Date(from);
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const currentDay = today.getDate();
+
+    if (dayOfMonth >= currentDay) {
+      return dayOfMonth - currentDay;
+    } else {
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      return daysInMonth - currentDay + dayOfMonth;
+    }
+  };
+
+  // Dashboard Tab
+  const DashboardTab = () => {
+    const totalDebt = creditCards.reduce((sum, card) => sum + card.balance, 0);
+    const totalLimit = creditCards.reduce((sum, card) => sum + card.limit, 0);
+    const totalSavings = savingsAccounts.reduce((sum, acc) => sum + acc.balance, 0);
+    const utilizationRate = (totalDebt / totalLimit) * 100;
+
+    const monthlySubscriptionTotal = subscriptions.reduce(
+      (sum, sub) => sum + (sub.status === 'Active' ? sub.amount : 0),
+      0
+    );
+    const monthlyBillsTotal = fixedBills.reduce((sum, bill) => sum + bill.amount, 0);
+    const monthlyInstallments = installments.reduce((sum, inst) => sum + inst.monthlyPayment, 0);
+    const totalMonthlyObligations = monthlySubscriptionTotal + monthlyBillsTotal + monthlyInstallments;
+
+    return (
+      <div className="space-y-6">
+        {/* Real-time Clock */}
+        <div className="bg-gradient-to-r from-pink-100 to-blue-100 rounded-lg p-6 text-center">
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Clock className="text-pink-600" />
+            <span className="text-sm text-gray-600">Current Time</span>
+          </div>
+          <div className="text-4xl font-bold text-gray-800">
+            {currentDate.toLocaleTimeString('en-PH')}
+          </div>
+          <div className="text-lg text-gray-700 mt-2">
+            {currentDate.toLocaleDateString('en-PH', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Total Debt Card */}
+          <div className="bg-gradient-to-br from-red-100 to-pink-100 rounded-lg p-6 shadow">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Total Debt</h3>
+              <TrendingDown className="text-red-600" />
+            </div>
+            <p className="text-3xl font-bold text-red-700">₱{totalDebt.toLocaleString('en-PH', { maximumFractionDigits: 2 })}</p>
+            <p className="text-sm text-gray-600 mt-2">Across {creditCards.length} cards</p>
+          </div>
+
+          {/* Total Savings Card */}
+          <div className="bg-gradient-to-br from-blue-100 to-cyan-100 rounded-lg p-6 shadow">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Total Savings</h3>
+              <TrendingUp className="text-blue-600" />
+            </div>
+            <p className="text-3xl font-bold text-blue-700">₱{totalSavings.toLocaleString('en-PH', { maximumFractionDigits: 2 })}</p>
+            <p className="text-sm text-gray-600 mt-2">Across {savingsAccounts.length} accounts</p>
+          </div>
+
+          {/* Credit Utilization Card */}
+          <div className="bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg p-6 shadow">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Credit Utilization</h3>
+              <AlertTriangle className="text-purple-600" />
+            </div>
+            <p className="text-3xl font-bold text-purple-700">{utilizationRate.toFixed(1)}%</p>
+            <p className="text-sm text-gray-600 mt-2">of ₱{totalLimit.toLocaleString('en-PH')} limit</p>
+          </div>
+        </div>
+
+        {/* Monthly Obligations */}
+        <div className="bg-gradient-to-r from-pink-50 to-blue-50 rounded-lg p-6 shadow">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Monthly Obligations</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div>
+              <p className="text-sm text-gray-600">Subscriptions</p>
+              <p className="text-2xl font-bold text-blue-600">₱{monthlySubscriptionTotal.toLocaleString('en-PH', { maximumFractionDigits: 2 })}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Fixed Bills</p>
+              <p className="text-2xl font-bold text-red-600">₱{monthlyBillsTotal.toLocaleString('en-PH', { maximumFractionDigits: 2 })}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Installments</p>
+              <p className="text-2xl font-bold text-pink-600">₱{monthlyInstallments.toLocaleString('en-PH', { maximumFractionDigits: 2 })}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600">Total</p>
+              <p className="text-2xl font-bold text-purple-600">₱{totalMonthlyObligations.toLocaleString('en-PH', { maximumFractionDigits: 2 })}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Savings Accounts */}
+        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-6 shadow">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Savings Accounts</h3>
+          <div className="space-y-3">
+            {savingsAccounts.map((account) => (
+              <div key={account.id} className="flex items-center justify-between bg-white p-4 rounded">
+                <input
+                  type="text"
+                  value={account.name}
+                  onChange={(e) =>
+                    setSavingsAccounts(
+                      savingsAccounts.map((acc) =>
+                        acc.id === account.id ? { ...acc, name: e.target.value } : acc
+                      )
+                    )
+                  }
+                  className="text-sm font-medium text-gray-800 flex-1 border-b border-gray-300 px-2 py-1"
+                  placeholder="Account name"
+                />
+                <input
+                  type="number"
+                  value={account.balance}
+                  onChange={(e) =>
+                    setSavingsAccounts(
+                      savingsAccounts.map((acc) =>
+                        acc.id === account.id ? { ...acc, balance: parseFloat(e.target.value) || 0 } : acc
+                      )
+                    )
+                  }
+                  className="text-lg font-bold text-blue-700 border-b border-gray-300 px-2 py-1 w-32 text-right"
+                  placeholder="0"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Subscriptions */}
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6 shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Subscriptions</h3>
+            <button
+              onClick={() => {
+                const newSub = {
+                  id: 'sub-' + Date.now(),
+                  name: 'New Subscription',
+                  amount: 0,
+                  day: 1,
+                  card: creditCards[0]?.id || '',
+                  status: 'Active',
+                };
+                setSubscriptions([...subscriptions, newSub]);
+              }}
+              className="bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600"
+            >
+              <Plus size={16} className="inline mr-1" /> Add
+            </button>
+          </div>
+          <div className="space-y-3">
+            {subscriptions.map((sub) => (
+              <div key={sub.id} className="bg-white p-4 rounded grid grid-cols-5 gap-2 items-center">
+                <input
+                  type="text"
+                  value={sub.name}
+                  onChange={(e) =>
+                    setSubscriptions(
+                      subscriptions.map((s) => (s.id === sub.id ? { ...s, name: e.target.value } : s))
+                    )
+                  }
+                  placeholder="Name"
+                  className="border border-gray-300 rounded px-2 py-1 text-sm"
+                />
+                <input
+                  type="number"
+                  value={sub.amount}
+                  onChange={(e) =>
+                    setSubscriptions(
+                      subscriptions.map((s) =>
+                        s.id === sub.id ? { ...s, amount: parseFloat(e.target.value) || 0 } : s
+                      )
+                    )
+                  }
+                  placeholder="Amount"
+                  className="border border-gray-300 rounded px-2 py-1 text-sm"
+                />
+                <input
+                  type="number"
+                  value={sub.day}
+                  onChange={(e) =>
+                    setSubscriptions(
+                      subscriptions.map((s) =>
+                        s.id === sub.id ? { ...s, day: parseInt(e.target.value) || 1 } : s
+                      )
+                    )
+                  }
+                  placeholder="Day"
+                  min="1"
+                  max="31"
+                  className="border border-gray-300 rounded px-2 py-1 text-sm"
+                />
+                <select
+                  value={sub.card}
+                  onChange={(e) =>
+                    setSubscriptions(
+                      subscriptions.map((s) => (s.id === sub.id ? { ...s, card: e.target.value } : s))
+                    )
+                  }
+                  className="border border-gray-300 rounded px-2 py-1 text-sm"
+                >
+                  {creditCards.map((card) => (
+                    <option key={card.id} value={card.id}>
+                      {card.name.substring(0, 20)}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => setSubscriptions(subscriptions.filter((s) => s.id !== sub.id))}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Fixed Bills */}
+        <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-6 shadow">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Fixed Bills</h3>
+            <button
+              onClick={() => {
+                const newBill = {
+                  id: 'bill-' + Date.now(),
+                  name: 'New Bill',
+                  amount: 0,
+                  day: 1,
+                  status: 'Active',
+                };
+                setFixedBills([...fixedBills, newBill]);
+              }}
+              className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
+            >
+              <Plus size={16} className="inline mr-1" /> Add
+            </button>
+          </div>
+          <div className="space-y-3">
+            {fixedBills.map((bill) => (
+              <div key={bill.id} className="bg-white p-4 rounded grid grid-cols-5 gap-2 items-center">
+                <input
+                  type="text"
+                  value={bill.name}
+                  onChange={(e) =>
+                    setFixedBills(
+                      fixedBills.map((b) => (b.id === bill.id ? { ...b, name: e.target.value } : b))
+                    )
+                  }
+                  placeholder="Name"
+                  className="border border-gray-300 rounded px-2 py-1 text-sm"
+                />
+                <input
+                  type="number"
+                  value={bill.amount}
+                  onChange={(e) =>
+                    setFixedBills(
+                      fixedBills.map((b) =>
+                        b.id === bill.id ? { ...b, amount: parseFloat(e.target.value) || 0 } : b
+                      )
+                    )
+                  }
+                  placeholder="Amount"
+                  className="border border-gray-300 rounded px-2 py-1 text-sm"
+                />
+                <input
+                  type="number"
+                  value={bill.day}
+                  onChange={(e) =>
+                    setFixedBills(
+                      fixedBills.map((b) => (b.id === bill.id ? { ...b, day: parseInt(e.target.value) || 1 } : b))
+                    )
+                  }
+                  placeholder="Day"
+                  min="1"
+                  max="31"
+                  className="border border-gray-300 rounded px-2 py-1 text-sm"
+                />
+                <select
+                  value={bill.status}
+                  onChange={(e) =>
+                    setFixedBills(
+                      fixedBills.map((b) => (b.id === bill.id ? { ...b, status: e.target.value } : b))
+                    )
+                  }
+                  className="border border-gray-300 rounded px-2 py-1 text-sm"
+                >
+                  <option>Active</option>
+                  <option>Inactive</option>
+                </select>
+                <button
+                  onClick={() => setFixedBills(fixedBills.filter((b) => b.id !== bill.id))}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Installments */}
+        <div className="bg-gradient-to-r from-orange-50 to-pink-50 rounded-lg p-6 shadow">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Installments</h3>
+          <div className="space-y-3">
+            {installments.map((inst) => (
+              <div key={inst.id} className="bg-white p-4 rounded">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-semibold text-gray-800">{inst.name}</h4>
+                  <span className="text-sm text-gray-600">
+                    ₱{inst.remainingBalance.toLocaleString('en-PH', { maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="grid grid-cols-4 gap-2 text-sm text-gray-600">
+                  <div>Monthly: ₱{inst.monthlyPayment.toFixed(2)}</div>
+                  <div>Months: {inst.months}</div>
+                  <div>Started: {new Date(inst.startDate).toLocaleDateString()}</div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={inst.paid}
+                      onChange={(e) =>
+                        setInstallments(
+                          installments.map((i) =>
+                            i.id === inst.id ? { ...i, paid: e.target.checked } : i
+                          )
+                        )
+                      }
+                    />
+                    <span>Paid this month</span>
+                  </label>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Credit Cards Tab
+  const CreditCardsTab = () => {
+    const suggestedPayments = calculateSuggestedPayments();
+
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {creditCards.map((card) => {
+            const daysToStatement = calculateDaysUntil(new Date(), card.statementDay);
+            const projectedBalance = calculateCardForecast(card, new Date());
+            const nextStatementDate = new Date();
+            nextStatementDate.setDate(nextStatementDate.getDate() + daysToStatement);
+
+            return (
+              <div
+                key={card.id}
+                className="bg-gradient-to-br from-pink-50 to-blue-50 border border-pink-200 rounded-lg p-6 shadow"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-bold text-gray-800">{card.name}</h3>
+                  <CreditCard className="text-pink-600" />
+                </div>
+
+                <div className="space-y-3 text-sm">
+                  <div>
+                    <label className="block text-gray-600 mb-1">Current Balance</label>
+                    <input
+                      type="number"
+                      value={card.balance}
+                      onChange={(e) =>
+                        setCreditCards(
+                          creditCards.map((c) =>
+                            c.id === card.id ? { ...c, balance: parseFloat(e.target.value) || 0 } : c
+                          )
+                        )
+                      }
+                      placeholder="Balance (₱)"
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-gray-600 mb-1">Monthly Rate (%)</label>
+                      <input
+                        type="number"
+                        value={card.rate}
+                        onChange={(e) =>
+                          setCreditCards(
+                            creditCards.map((c) =>
+                              c.id === card.id ? { ...c, rate: parseFloat(e.target.value) || 0 } : c
+                            )
+                          )
+                        }
+                        placeholder="Monthly Rate (%)"
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-600 mb-1">Credit Limit (₱)</label>
+                      <input
+                        type="number"
+                        value={card.limit}
+                        onChange={(e) =>
+                          setCreditCards(
+                            creditCards.map((c) =>
+                              c.id === card.id ? { ...c, limit: parseFloat(e.target.value) || 0 } : c
+                            )
+                          )
+                        }
+                        placeholder="Credit Limit (₱)"
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-gray-600 mb-1">Min Payment (₱)</label>
+                      <input
+                        type="number"
+                        value={card.minPayment}
+                        onChange={(e) =>
+                          setCreditCards(
+                            creditCards.map((c) =>
+                              c.id === card.id ? { ...c, minPayment: parseFloat(e.target.value) || 0 } : c
+                            )
+                          )
+                        }
+                        placeholder="Min Payment (₱)"
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-gray-600 mb-1">Statement Day</label>
+                      <input
+                        type="number"
+                        value={card.statementDay}
+                        onChange={(e) =>
+                          setCreditCards(
+                            creditCards.map((c) =>
+                              c.id === card.id ? { ...c, statementDay: parseInt(e.target.value) || 1 } : c
+                            )
+                          )
+                        }
+                        placeholder="Statement Day"
+                        min="1"
+                        max="31"
+                        className="w-full border border-gray-300 rounded px-3 py-2"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-gray-600 mb-1">Days to Due</label>
+                    <input
+                      type="number"
+                      value={card.daysTodue}
+                      onChange={(e) =>
+                        setCreditCards(
+                          creditCards.map((c) =>
+                            c.id === card.id ? { ...c, daysTodue: parseInt(e.target.value) || 0 } : c
+                          )
+                        )
+                      }
+                      placeholder="Days to Due"
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+                  </div>
+
+                  <div className="bg-white p-3 rounded border border-purple-200">
+                    <p className="text-gray-600">Suggested Payment (Avalanche)</p>
+                    <p className="text-2xl font-bold text-purple-600">
+                      ₱{(suggestedPayments[card.id] || card.minPayment).toFixed(2)}
+                    </p>
+                  </div>
+
+                  <div className="bg-white p-3 rounded border border-blue-200">
+                    <p className="text-gray-600">Projected Balance on {nextStatementDate.toLocaleDateString()}</p>
+                    <p className="text-2xl font-bold text-blue-600">
+                      ₱{projectedBalance.toLocaleString('en-PH', { maximumFractionDigits: 2 })}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const amount = prompt('Payment amount:');
+                      const date = prompt('Payment date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+                      if (amount && date) {
+                        setCreditCards(
+                          creditCards.map((c) =>
+                            c.id === card.id
+                              ? {
+                                  ...c,
+                                  balance: Math.max(0, c.balance - parseFloat(amount)),
+                                  paymentHistory: [
+                                    ...(c.paymentHistory || []),
+                                    { date, amount: parseFloat(amount) },
+                                  ],
+                                }
+                              : c
+                          )
+                        );
+                      }
+                    }}
+                    className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 font-semibold"
+                  >
+                    Log Payment
+                  </button>
+
+                  {card.paymentHistory && card.paymentHistory.length > 0 && (
+                    <div className="bg-white p-3 rounded">
+                      <p className="font-semibold text-gray-800 mb-2">Payment History</p>
+                      <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {card.paymentHistory.map((payment, idx) => (
+                          <div key={idx} className="text-sm text-gray-600 flex justify-between">
+                            <span>{payment.date}</span>
+                            <span className="font-semibold">₱{payment.amount.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  // Grocery Tab
+  const GroceryTab = () => {
+    const [expandedCategory, setExpandedCategory] = useState('VITAMINS');
+    const [editingItem, setEditingItem] = useState(null);
+
+    const groupedItems = useMemo(() => {
+      return groceryItems.reduce((acc, item) => {
+        if (!acc[item.category]) acc[item.category] = [];
+        acc[item.category].push(item);
+        return acc;
+      }, {});
+    }, [groceryItems]);
+
+    const handleMarkPurchased = (itemId) => {
+      setGroceryItems(
+        groceryItems.map((item) =>
+          item.id === itemId ? { ...item, lastPurchased: new Date().toISOString().split('T')[0] } : item
+        )
+      );
     };
-  }, [groceries]);
 
-  const calculateMonthlyEquivalent = (frequencyDays, price) => {
-    return (price / frequencyDays) * 30;
-  };
-
-  const getNextPurchaseDate = (lastPurchased, frequencyDays) => {
-    const last = new Date(lastPurchased);
-    const next = new Date(last.getTime() + frequencyDays * 24 * 60 * 60 * 1000);
-    return next.toISOString().split('T')[0];
-  };
-
-  const exportData = () => {
-    const data = {
-      creditCards,
-      purchases,
-      subscriptions,
-      installments,
-      groceries,
-      trips,
-      exchangeRate,
-      exportDate: new Date().toISOString(),
+    const calculateDaysUntilReplenish = (item) => {
+      if (!item.lastPurchased) return 'Not purchased yet';
+      const lastDate = new Date(item.lastPurchased);
+      const nextDate = new Date(lastDate);
+      nextDate.setDate(nextDate.getDate() + item.frequencyDays);
+      const today = new Date();
+      const daysLeft = Math.ceil((nextDate - today) / (1000 * 60 * 60 * 24));
+      return daysLeft > 0 ? `${daysLeft} days` : 'Due now!';
     };
-    const dataStr = JSON.stringify(data, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `MyLedger_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
+
+    return (
+      <div className="space-y-4">
+        {Object.entries(groupedItems).map(([category, items]) => (
+          <div key={category} className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-lg shadow">
+            <button
+              onClick={() => setExpandedCategory(expandedCategory === category ? null : category)}
+              className="w-full p-4 flex items-center justify-between hover:bg-white hover:bg-opacity-50 transition"
+            >
+              <h3 className="text-lg font-bold text-gray-800">{category}</h3>
+              <ChevronDown
+                size={20}
+                className={`text-pink-600 transition ${expandedCategory === category ? 'rotate-180' : ''}`}
+              />
+            </button>
+
+            {expandedCategory === category && (
+              <div className="p-4 border-t border-pink-200 space-y-3">
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="bg-white p-4 rounded border border-pink-200 flex items-center justify-between"
+                  >
+                    {editingItem === item.id ? (
+                      <div className="flex-1 grid grid-cols-5 gap-2">
+                        <input
+                          type="text"
+                          value={item.name}
+                          onChange={(e) =>
+                            setGroceryItems(
+                              groceryItems.map((it) =>
+                                it.id === item.id ? { ...it, name: e.target.value } : it
+                              )
+                            )
+                          }
+                          placeholder="Name"
+                          className="border border-gray-300 rounded px-2 py-1 text-sm"
+                        />
+                        <input
+                          type="number"
+                          value={item.price}
+                          onChange={(e) =>
+                            setGroceryItems(
+                              groceryItems.map((it) =>
+                                it.id === item.id ? { ...it, price: parseFloat(e.target.value) || 0 } : it
+                              )
+                            )
+                          }
+                          placeholder="Price"
+                          className="border border-gray-300 rounded px-2 py-1 text-sm"
+                        />
+                        <input
+                          type="number"
+                          value={item.frequencyDays}
+                          onChange={(e) =>
+                            setGroceryItems(
+                              groceryItems.map((it) =>
+                                it.id === item.id ? { ...it, frequencyDays: parseInt(e.target.value) || 30 } : it
+                              )
+                            )
+                          }
+                          placeholder="Days"
+                          className="border border-gray-300 rounded px-2 py-1 text-sm"
+                        />
+                        <input
+                          type="date"
+                          value={item.lastPurchased || ''}
+                          onChange={(e) =>
+                            setGroceryItems(
+                              groceryItems.map((it) =>
+                                it.id === item.id ? { ...it, lastPurchased: e.target.value } : it
+                              )
+                            )
+                          }
+                          className="border border-gray-300 rounded px-2 py-1 text-sm"
+                        />
+                        <button
+                          onClick={() => setEditingItem(null)}
+                          className="text-green-600 hover:text-green-800"
+                        >
+                          <Check size={16} />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-gray-800">{item.name}</h4>
+                          <p className="text-sm text-gray-600">
+                            ₱{item.price.toFixed(2)} • Every {item.frequencyDays} days • {calculateDaysUntilReplenish(item)}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleMarkPurchased(item.id)}
+                          className="bg-green-500 text-white px-4 py-2 rounded text-sm hover:bg-green-600 mr-2"
+                        >
+                          Mark Purchased
+                        </button>
+                        <button
+                          onClick={() => setEditingItem(item.id)}
+                          className="text-blue-600 hover:text-blue-800 mr-2"
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => setGroceryItems(groceryItems.filter((it) => it.id !== item.id))}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* Add Item Form */}
+        <div className="bg-gradient-to-r from-pink-100 to-purple-100 rounded-lg p-6 shadow">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">Add Item</h3>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              const newItem = {
+                id: 'item-' + Date.now(),
+                category: formData.get('category') || 'VITAMINS',
+                name: formData.get('name') || '',
+                price: parseFloat(formData.get('price')) || 0,
+                frequencyDays: parseInt(formData.get('frequencyDays')) || 30,
+                lastPurchased: null,
+                card: formData.get('card') || creditCards[0]?.id || '',
+              };
+              if (newItem.name) {
+                setGroceryItems([...groceryItems, newItem]);
+                e.target.reset();
+              }
+            }}
+            className="grid grid-cols-1 md:grid-cols-5 gap-3"
+          >
+            <select name="category" className="border border-gray-300 rounded px-3 py-2" defaultValue="VITAMINS">
+              <option>VITAMINS</option>
+              <option>SKINCARE</option>
+              <option>TOILETRIES</option>
+              <option>HOUSEHOLD</option>
+            </select>
+            <input
+              type="text"
+              name="name"
+              placeholder="Item name"
+              className="border border-gray-300 rounded px-3 py-2"
+              required
+            />
+            <input
+              type="number"
+              name="price"
+              placeholder="Price"
+              step="0.01"
+              className="border border-gray-300 rounded px-3 py-2"
+              required
+            />
+            <input
+              type="number"
+              name="frequencyDays"
+              placeholder="Frequency (days)"
+              className="border border-gray-300 rounded px-3 py-2"
+              required
+            />
+            <button type="submit" className="bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600 font-semibold">
+              Add Item
+            </button>
+          </form>
+        </div>
+      </div>
+    );
   };
 
-  const getCurrentMonth = () => {
-    const now = new Date();
-    return { year: now.getFullYear(), month: now.getMonth() };
+  // Purchases Tab
+  const PurchasesTab = () => {
+    const [filterCategory, setFilterCategory] = useState('All');
+
+    const categories = useMemo(() => {
+      const cats = new Set(purchases.map((p) => p.category));
+      return ['All', ...Array.from(cats)];
+    }, [purchases]);
+
+    const filteredPurchases = filterCategory === 'All' ? purchases : purchases.filter((p) => p.category === filterCategory);
+
+    const handleAddPurchase = () => {
+      const newPurchase = {
+        id: 'purchase-' + Date.now(),
+        description: '',
+        amount: 0,
+        category: 'Other',
+        card: creditCards[0]?.id || '',
+        isNecessity: false,
+        date: new Date().toISOString().split('T')[0],
+        notes: '',
+      };
+      setPurchases([...purchases, newPurchase]);
+    };
+
+    return (
+      <div className="space-y-4">
+        <div className="flex gap-2 flex-wrap">
+          {categories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setFilterCategory(cat)}
+              className={`px-4 py-2 rounded font-semibold transition ${
+                filterCategory === cat
+                  ? 'bg-pink-600 text-white'
+                  : 'bg-pink-100 text-pink-800 hover:bg-pink-200'
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={handleAddPurchase}
+          className="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-6 py-2 rounded hover:from-pink-600 hover:to-purple-600 font-semibold flex items-center gap-2"
+        >
+          <Plus size={20} /> Add Purchase
+        </button>
+
+        <div className="space-y-3">
+          {filteredPurchases.map((purchase) => (
+            <div key={purchase.id} className="bg-gradient-to-r from-pink-50 to-blue-50 p-4 rounded border border-pink-200">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <input
+                  type="text"
+                  value={purchase.description}
+                  onChange={(e) =>
+                    setPurchases(
+                      purchases.map((p) =>
+                        p.id === purchase.id ? { ...p, description: e.target.value } : p
+                      )
+                    )
+                  }
+                  placeholder="Description"
+                  className="border border-gray-300 rounded px-3 py-2"
+                />
+                <input
+                  type="number"
+                  value={purchase.amount}
+                  onChange={(e) =>
+                    setPurchases(
+                      purchases.map((p) =>
+                        p.id === purchase.id ? { ...p, amount: parseFloat(e.target.value) || 0 } : p
+                      )
+                    )
+                  }
+                  placeholder="Amount"
+                  step="0.01"
+                  className="border border-gray-300 rounded px-3 py-2"
+                />
+                <select
+                  value={purchase.category}
+                  onChange={(e) =>
+                    setPurchases(
+                      purchases.map((p) =>
+                        p.id === purchase.id ? { ...p, category: e.target.value } : p
+                      )
+                    )
+                  }
+                  className="border border-gray-300 rounded px-3 py-2"
+                >
+                  <option>Groceries</option>
+                  <option>Utilities</option>
+                  <option>Entertainment</option>
+                  <option>Transport</option>
+                  <option>Health</option>
+                  <option>Other</option>
+                </select>
+                {purchase.category === 'Other' && (
+                  <input
+                    type="text"
+                    value={purchase.customCategory || ''}
+                    onChange={(e) =>
+                      setPurchases(
+                        purchases.map((p) =>
+                          p.id === purchase.id ? { ...p, customCategory: e.target.value } : p
+                        )
+                      )
+                    }
+                    placeholder="Custom category"
+                    className="border border-gray-300 rounded px-3 py-2"
+                  />
+                )}
+                <select
+                  value={purchase.card}
+                  onChange={(e) =>
+                    setPurchases(
+                      purchases.map((p) =>
+                        p.id === purchase.id ? { ...p, card: e.target.value } : p
+                      )
+                    )
+                  }
+                  className="border border-gray-300 rounded px-3 py-2"
+                >
+                  {creditCards.map((card) => (
+                    <option key={card.id} value={card.id}>
+                      {card.name.substring(0, 15)}
+                    </option>
+                  ))}
+                  <option value="cash">Cash</option>
+                </select>
+                <button
+                  onClick={() => setPurchases(purchases.filter((p) => p.id !== purchase.id))}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  type="date"
+                  value={purchase.date}
+                  onChange={(e) =>
+                    setPurchases(
+                      purchases.map((p) =>
+                        p.id === purchase.id ? { ...p, date: e.target.value } : p
+                      )
+                    )
+                  }
+                  className="border border-gray-300 rounded px-3 py-2 text-sm"
+                />
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={purchase.isNecessity}
+                    onChange={(e) =>
+                      setPurchases(
+                        purchases.map((p) =>
+                          p.id === purchase.id ? { ...p, isNecessity: e.target.checked } : p
+                        )
+                      )
+                    }
+                  />
+                  <span className="text-sm text-gray-700">Is Necessity/Recurring</span>
+                </label>
+                {purchase.isNecessity && (
+                  <select
+                    value={purchase.linkedGrocery || ''}
+                    onChange={(e) =>
+                      setPurchases(
+                        purchases.map((p) =>
+                          p.id === purchase.id ? { ...p, linkedGrocery: e.target.value } : p
+                        )
+                      )
+                    }
+                    className="border border-gray-300 rounded px-2 py-1 text-sm"
+                  >
+                    <option value="">Link to grocery item...</option>
+                    {groceryItems.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
-  const getDaysInMonth = (month, year) => {
-    return new Date(year, month + 1, 0).getDate();
+  // Travel Tab
+  const TravelTab = () => {
+    const [showAddTripForm, setShowAddTripForm] = useState(false);
+    const [showAddExpenseForm, setShowAddExpenseForm] = useState(false);
+    const [selectedTrip, setSelectedTrip] = useState(null);
+
+    const handleAddTrip = (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const newTrip = {
+        id: 'trip-' + Date.now(),
+        name: formData.get('name') || '',
+        destination: formData.get('destination') || '',
+        startDate: formData.get('startDate') || '',
+        endDate: formData.get('endDate') || '',
+        notes: formData.get('notes') || '',
+        expenses: [],
+      };
+      setTrips([...trips, newTrip]);
+      setShowAddTripForm(false);
+      e.target.reset();
+    };
+
+    const handleAddExpense = (e) => {
+      e.preventDefault();
+      if (!selectedTrip) return;
+      const formData = new FormData(e.target);
+      const newExpense = {
+        id: 'exp-' + Date.now(),
+        description: formData.get('description') || '',
+        amount: parseFloat(formData.get('amount')) || 0,
+        category: formData.get('category') || 'Other',
+        card: formData.get('card') || creditCards[0]?.id || '',
+        paid: formData.get('paid') === 'on',
+        date: formData.get('date') || '',
+        notes: formData.get('notes') || '',
+      };
+
+      setTrips(
+        trips.map((trip) =>
+          trip.id === selectedTrip
+            ? { ...trip, expenses: [...trip.expenses, newExpense] }
+            : trip
+        )
+      );
+      setShowAddExpenseForm(false);
+      e.target.reset();
+    };
+
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={() => setShowAddTripForm(!showAddTripForm)}
+          className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white px-6 py-2 rounded hover:from-teal-600 hover:to-cyan-600 font-semibold flex items-center gap-2"
+        >
+          <Plus size={20} /> Add Trip
+        </button>
+
+        {showAddTripForm && (
+          <div className="bg-gradient-to-r from-teal-50 to-cyan-50 p-6 rounded border border-teal-200 shadow">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">New Trip</h3>
+            <form onSubmit={handleAddTrip} className="space-y-3">
+              <input
+                type="text"
+                name="name"
+                placeholder="Trip Name"
+                required
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              />
+              <input
+                type="text"
+                name="destination"
+                placeholder="Destination"
+                required
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="date"
+                  name="startDate"
+                  required
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                />
+                <input
+                  type="date"
+                  name="endDate"
+                  required
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                />
+              </div>
+              <textarea
+                name="notes"
+                placeholder="Notes"
+                className="w-full border border-gray-300 rounded px-3 py-2"
+                rows="3"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className="bg-teal-500 text-white px-6 py-2 rounded hover:bg-teal-600 font-semibold"
+                >
+                  Add Trip
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddTripForm(false)}
+                  className="bg-gray-400 text-white px-6 py-2 rounded hover:bg-gray-500"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {trips.map((trip) => (
+            <div key={trip.id} className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-lg p-6 shadow border border-teal-200">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-xl font-bold text-gray-800">{trip.name}</h3>
+                  <p className="text-sm text-gray-600">
+                    {trip.destination} • {new Date(trip.startDate).toLocaleDateString()} -{' '}
+                    {new Date(trip.endDate).toLocaleDateString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setTrips(trips.filter((t) => t.id !== trip.id))}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  <Trash2 size={20} />
+                </button>
+              </div>
+
+              {trip.notes && <p className="text-sm text-gray-700 mb-4 italic">{trip.notes}</p>}
+
+              <div className="mb-4">
+                <h4 className="font-semibold text-gray-800 mb-3">Expenses</h4>
+                {trip.expenses.length > 0 ? (
+                  <div className="space-y-2 mb-3">
+                    {trip.expenses.map((exp) => (
+                      <div
+                        key={exp.id}
+                        className="bg-white p-3 rounded flex items-center justify-between"
+                      >
+                        <div>
+                          <p className="font-semibold text-gray-800">{exp.description}</p>
+                          <p className="text-sm text-gray-600">
+                            {exp.category} • {exp.date} • {creditCards.find((c) => c.id === exp.card)?.name}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-lg font-bold text-gray-800">
+                            ₱{exp.amount.toFixed(2)}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {exp.paid ? 'Paid' : 'Unpaid'}
+                          </p>
+                          <button
+                            onClick={() =>
+                              setTrips(
+                                trips.map((t) =>
+                                  t.id === trip.id
+                                    ? {
+                                        ...t,
+                                        expenses: t.expenses.filter((e) => e.id !== exp.id),
+                                      }
+                                    : t
+                                )
+                              )
+                            }
+                            className="text-red-600 hover:text-red-800 text-xs mt-1"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-600 mb-3">No expenses yet</p>
+                )}
+
+                <button
+                  onClick={() => {
+                    setSelectedTrip(trip.id);
+                    setShowAddExpenseForm(!showAddExpenseForm || selectedTrip !== trip.id);
+                  }}
+                  className="bg-teal-500 text-white px-4 py-2 rounded text-sm hover:bg-teal-600 font-semibold flex items-center gap-2"
+                >
+                  <Plus size={16} /> Add Expense
+                </button>
+
+                {showAddExpenseForm && selectedTrip === trip.id && (
+                  <form onSubmit={handleAddExpense} className="mt-3 p-3 bg-white rounded border border-teal-200 space-y-2">
+                    <input
+                      type="text"
+                      name="description"
+                      placeholder="Description"
+                      required
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="number"
+                        name="amount"
+                        placeholder="Amount"
+                        step="0.01"
+                        required
+                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                      />
+                      <select name="category" className="border border-gray-300 rounded px-3 py-2 text-sm">
+                        <option>Flight</option>
+                        <option>Hotel</option>
+                        <option>Baggage</option>
+                        <option>Travel Tax</option>
+                        <option>Activities</option>
+                        <option>Cash Allotment</option>
+                        <option>SIM Card</option>
+                        <option>Food</option>
+                        <option>Transport</option>
+                        <option>Shopping</option>
+                        <option>Insurance</option>
+                        <option>Other</option>
+                      </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <select name="card" className="border border-gray-300 rounded px-3 py-2 text-sm">
+                        {creditCards.map((card) => (
+                          <option key={card.id} value={card.id}>
+                            {card.name.substring(0, 15)}
+                          </option>
+                        ))}
+                        <option value="cash">Cash</option>
+                      </select>
+                      <input
+                        type="date"
+                        name="date"
+                        className="border border-gray-300 rounded px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" name="paid" />
+                      <span className="text-sm text-gray-700">Paid</span>
+                    </label>
+                    <textarea
+                      name="notes"
+                      placeholder="Notes"
+                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                      rows="2"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="submit"
+                        className="bg-teal-500 text-white px-4 py-2 rounded text-sm hover:bg-teal-600 font-semibold"
+                      >
+                        Add Expense
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddExpenseForm(false)}
+                        className="bg-gray-400 text-white px-4 py-2 rounded text-sm hover:bg-gray-500"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
-  const getCalendarDays = (month, year) => {
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = getDaysInMonth(month, year);
+  // Calendar Tab
+  const CalendarTab = () => {
+    const getDaysInMonth = (month, year) => new Date(year, month + 1, 0).getDate();
+    const getFirstDayOfMonth = (month, year) => new Date(year, month, 1).getDay();
+
+    const handlePrevMonth = () => {
+      if (calendarMonth === 0) {
+        setCalendarMonth(11);
+        setCalendarYear(calendarYear - 1);
+      } else {
+        setCalendarMonth(calendarMonth - 1);
+      }
+    };
+
+    const handleNextMonth = () => {
+      if (calendarMonth === 11) {
+        setCalendarMonth(0);
+        setCalendarYear(calendarYear + 1);
+      } else {
+        setCalendarMonth(calendarMonth + 1);
+      }
+    };
+
+    const daysInMonth = getDaysInMonth(calendarMonth, calendarYear);
+    const firstDay = getFirstDayOfMonth(calendarMonth, calendarYear);
     const days = [];
 
     for (let i = 0; i < firstDay; i++) {
@@ -1046,1163 +2200,247 @@ const MyLedger = () => {
       days.push(i);
     }
 
-    return days;
+    const monthName = new Date(calendarYear, calendarMonth).toLocaleString('en-US', { month: 'long' });
+
+    return (
+      <div className="space-y-4">
+        <div className="bg-gradient-to-r from-pink-100 to-purple-100 rounded-lg p-6 shadow">
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={handlePrevMonth}
+              className="bg-pink-500 text-white p-2 rounded hover:bg-pink-600"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <h2 className="text-2xl font-bold text-gray-800">
+              {monthName} {calendarYear}
+            </h2>
+            <button
+              onClick={handleNextMonth}
+              className="bg-pink-500 text-white p-2 rounded hover:bg-pink-600"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 gap-2 mb-4">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+              <div key={day} className="text-center font-bold text-gray-700 py-2">
+                {day}
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-2">
+            {days.map((day, idx) => {
+              if (!day) return <div key={`empty-${idx}`} className="aspect-square" />;
+
+              const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+              const hasEvent = selectedDate === day;
+              const payDays = getPayDayDates(calendarMonth, calendarYear);
+              const isPayDay = payDays.includes(day);
+              const isQuarterlyGrocery = [2, 5, 8, 11].includes(calendarMonth) && day === 30;
+
+              // Count events for this day
+              let eventCount = 0;
+              if (isPayDay) eventCount++;
+              if (isQuarterlyGrocery) eventCount++;
+
+              subscriptions.forEach((sub) => {
+                if (sub.day === day) eventCount++;
+              });
+              fixedBills.forEach((bill) => {
+                if (bill.day === day) eventCount++;
+              });
+              creditCards.forEach((card) => {
+                if (card.statementDay === day) eventCount++;
+              });
+              trips.forEach((trip) => {
+                const tripStart = new Date(trip.startDate);
+                const tripEnd = new Date(trip.endDate);
+                const checkDate = new Date(calendarYear, calendarMonth, day);
+                if (checkDate >= tripStart && checkDate <= tripEnd) eventCount++;
+              });
+
+              return (
+                <button
+                  key={day}
+                  onClick={() => handleDateClick(day)}
+                  className={`aspect-square p-2 rounded border-2 transition ${
+                    hasEvent
+                      ? 'border-pink-500 bg-pink-100'
+                      : eventCount > 0
+                      ? 'border-purple-300 bg-purple-50'
+                      : 'border-gray-200 bg-white hover:border-pink-300'
+                  }`}
+                >
+                  <div className="text-sm font-bold text-gray-800">{day}</div>
+                  {eventCount > 0 && (
+                    <div className="text-xs text-pink-600 font-semibold">{eventCount} event{eventCount > 1 ? 's' : ''}</div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Selected Date Details */}
+        {selectedDate && selectedDateEvents.length > 0 && (
+          <div className="bg-gradient-to-br from-pink-50 to-blue-50 rounded-lg p-6 shadow border border-pink-200">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">
+              {monthName} {selectedDate}, {calendarYear}
+            </h3>
+            <div className="space-y-3">
+              {selectedDateEvents.map((event, idx) => (
+                <div
+                  key={idx}
+                  className={`p-3 rounded border-l-4 ${
+                    event.color === 'green'
+                      ? 'bg-green-50 border-green-500'
+                      : event.color === 'red'
+                      ? 'bg-red-50 border-red-500'
+                      : event.color === 'blue'
+                      ? 'bg-blue-50 border-blue-500'
+                      : event.color === 'orange'
+                      ? 'bg-orange-50 border-orange-500'
+                      : event.color === 'teal'
+                      ? 'bg-teal-50 border-teal-500'
+                      : 'bg-pink-50 border-pink-500'
+                  }`}
+                >
+                  <p className="font-semibold text-gray-800">{event.title}</p>
+                  <p className="text-sm text-gray-600">{event.description}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Debt Forecast */}
+            <div className="mt-4 p-4 bg-white rounded border border-gray-300">
+              <h4 className="font-semibold text-gray-800 mb-2">Debt Forecast</h4>
+              <div className="space-y-2 text-sm">
+                {creditCards.filter((c) => c.balance > 0).map((card) => {
+                  const forecast = calculateCardForecast(card, new Date(calendarYear, calendarMonth, selectedDate));
+                  const suggested = calculateSuggestedPayments()[card.id] || card.minPayment;
+                  return (
+                    <div key={card.id} className="flex justify-between">
+                      <div>
+                        <p className="font-semibold text-gray-800">{card.name}</p>
+                        <p className="text-xs text-gray-600">Forecasted: ₱{forecast.toFixed(2)}</p>
+                        <p className="text-xs text-gray-600">Suggested payment: ₱{suggested.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
-  const getEventsForDay = (day, month, year) => {
-    if (!day) return [];
-
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    const events = [];
-
-    // Pay dates
-    if (day === 1 || day === 15) {
-      events.push({ type: 'income', label: 'Pay Day' });
-    }
-
-    // Statement dates
-    creditCards.forEach((card) => {
-      if (card.statementDay === day) {
-        events.push({ type: 'statement', label: 'Statement' });
-      }
-    });
-
-    // Bill due dates
-    fixedBills.forEach((bill) => {
-      if (bill.dueDate === day) {
-        events.push({ type: 'bill', label: bill.name.substring(0, 10) });
-      }
-    });
-
-    // Subscriptions
-    subscriptions.forEach((sub) => {
-      if (sub.chargeDate === day) {
-        events.push({ type: 'subscription', label: sub.name.substring(0, 10) });
-      }
-    });
-
-    return events;
+  // Export data function
+  const exportData = () => {
+    const data = {
+      creditCards,
+      savingsAccounts,
+      groceryItems,
+      purchases,
+      trips,
+      subscriptions,
+      fixedBills,
+      installments,
+      monthlyIncome,
+    };
+    const json = JSON.stringify(data, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `mysledger-backup-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
-
-  const monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-  const { month: currentMonth, year: currentYear } = getCurrentMonth();
-  const calendarDays = getCalendarDays(currentMonth, currentYear);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-purple-100">
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <DollarSign className="w-8 h-8" />
-            <div>
-              <h1 className="text-3xl font-bold">MyLedger</h1>
-              <p className="text-purple-100 text-sm">Personal Finance Dashboard for Trish</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setShowSettings(!showSettings)}
-            className="p-2 hover:bg-white/20 rounded-lg transition"
-          >
-            <Settings className="w-6 h-6" />
-          </button>
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-blue-50 relative overflow-hidden">
+      {/* Sakura Background */}
+      {sakuraPetals.map((petal) => (
+        <div
+          key={petal.id}
+          className="fixed pointer-events-none"
+          style={{
+            left: `${petal.left}%`,
+            top: `${petal.top}%`,
+            opacity: petal.opacity,
+            transform: `rotate(${Math.random() * 360}deg)`,
+            zIndex: 0,
+          }}
+        >
+          <SakuraPetal style={{ width: petal.size, height: petal.size }} />
         </div>
-      </div>
+      ))}
 
-      {/* Settings Panel */}
-      {showSettings && (
-        <div className="bg-white border-b border-purple-200 p-4 max-w-7xl mx-auto">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Exchange Rate (₱ per $1 USD)
-              </label>
-              <input
-                type="number"
-                value={exchangeRate}
-                onChange={(e) => setExchangeRate(parseFloat(e.target.value))}
-                className="w-full max-w-xs px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
+      <div className="relative z-10">
+        {/* Header */}
+        <header className="bg-gradient-to-r from-pink-200 via-purple-100 to-blue-200 shadow-md sticky top-0">
+          <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <DollarSign className="text-pink-600" size={32} />
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 to-blue-600 bg-clip-text text-transparent">
+                MyLedger
+              </h1>
+              <span className="text-sm text-gray-700 font-semibold ml-4">For Trish</span>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={exportData}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition"
-              >
-                <Download className="w-4 h-4" />
-                Export Data
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {/* Navigation Tabs */}
-      <div className="sticky top-20 z-40 bg-white border-b border-purple-200 shadow-sm max-w-7xl mx-auto">
-        <div className="flex overflow-x-auto px-4">
-          {[
-            { id: 'dashboard', label: 'Dashboard', icon: Home },
-            { id: 'purchases', label: 'Purchases', icon: ShoppingCart },
-            { id: 'cards', label: 'Credit Cards', icon: CreditCard },
-            { id: 'travel', label: 'Travel', icon: Plane },
-            { id: 'groceries', label: 'Groceries', icon: Package },
-            { id: 'calendar', label: 'Calendar', icon: Calendar },
-          ].map(({ id, label, icon: Icon }) => (
             <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-2 px-4 py-3 border-b-2 transition whitespace-nowrap ${
-                activeTab === id
-                  ? 'border-purple-500 text-purple-600'
-                  : 'border-transparent text-gray-600 hover:text-purple-600'
-              }`}
+              onClick={exportData}
+              className="flex items-center gap-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-4 py-2 rounded hover:from-pink-600 hover:to-purple-600 font-semibold"
             >
-              <Icon className="w-4 h-4" />
-              {label}
+              <Download size={18} /> Export Data
             </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* DASHBOARD TAB */}
-        {activeTab === 'dashboard' && (
-          <div className="space-y-6">
-            {/* Income Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gradient-to-br from-green-400 to-emerald-500 text-white rounded-xl p-6 shadow-lg">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-green-100 text-sm">Monthly Income</p>
-                    <p className="text-3xl font-bold mt-2">₱{monthlyIncome.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
-                    <p className="text-green-100 text-xs mt-2">
-                      Mole Street: $816.54 biweekly (Operations Associate)
-                    </p>
-                    <p className="text-green-100 text-xs">
-                      Archy: $1,550/mo (Marketing Assistant - unstable)
-                    </p>
-                  </div>
-                  <TrendingUp className="w-8 h-8" />
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-red-400 to-red-600 text-white rounded-xl p-6 shadow-lg">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-red-100 text-sm">Total Credit Card Debt</p>
-                    <p className="text-3xl font-bold mt-2">₱{totalDebt.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
-                    <p className="text-red-100 text-xs mt-2">
-                      Utilization: {((totalDebt / totalLimit) * 100).toFixed(1)}%
-                    </p>
-                  </div>
-                  <TrendingDown className="w-8 h-8" />
-                </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-blue-400 to-cyan-500 text-white rounded-xl p-6 shadow-lg">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-blue-100 text-sm">Monthly Obligations</p>
-                    <p className="text-3xl font-bold mt-2">
-                      ₱{(totalMinPayment + totalSubscriptions + totalInstallments + totalFixedBills).toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                    </p>
-                    <p className="text-blue-100 text-xs mt-2">Min payments, subs, bills, installments</p>
-                  </div>
-                  <AlertTriangle className="w-8 h-8" />
-                </div>
-              </div>
-            </div>
-
-            {/* Credit Cards Summary */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-purple-900 mb-4 flex items-center gap-2">
-                <CreditCard className="w-6 h-6" />
-                Credit Card Breakdown
-              </h2>
-              <div className="space-y-3">
-                {creditCards.map((card) => {
-                  const utilization = (card.balance / card.limit) * 100;
-                  return (
-                    <div key={card.id} className="border border-purple-200 rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="font-semibold text-gray-800">{card.name}</p>
-                          <p className="text-sm text-gray-600">
-                            Balance: ₱{card.balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })} / Limit: ₱
-                            {card.limit.toLocaleString('en-PH', { minimumFractionDigits: 0 })}
-                          </p>
-                        </div>
-                        <span className="text-lg font-bold text-purple-600">
-                          {utilization.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full ${getUtilizationColor(utilization)}`}
-                          style={{ width: `${Math.min(utilization, 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Subscriptions */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-purple-900 mb-4 flex items-center gap-2">
-                <Bell className="w-6 h-6" />
-                Active Subscriptions (₱{totalSubscriptions.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/mo)
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {subscriptions.map((sub) => (
-                  <div key={sub.id} className="border border-purple-200 rounded-lg p-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="font-semibold text-gray-800">{sub.name}</p>
-                        <p className="text-sm text-gray-600">₱{sub.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })} • Due {sub.chargeDate}th</p>
-                      </div>
-                      <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded">
-                        {sub.status}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Installments */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-purple-900 mb-4 flex items-center gap-2">
-                <Package className="w-6 h-6" />
-                Active Installments (₱{totalInstallments.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/mo)
-              </h2>
-              <div className="space-y-3">
-                {installments.map((inst) => {
-                  const monthsRemaining = Math.ceil(inst.remaining / inst.monthlyPayment);
-                  return (
-                    <div key={inst.id} className="border border-purple-200 rounded-lg p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <p className="font-semibold text-gray-800">{inst.name}</p>
-                          <p className="text-sm text-gray-600">
-                            ₱{(inst.monthlyPayment * inst.userShare).toLocaleString('en-PH', { minimumFractionDigits: 2 })}/mo • {monthsRemaining} months remaining
-                          </p>
-                          {inst.userShare === 0 && (
-                            <p className="text-xs text-orange-600 mt-1">Fiancé pays</p>
-                          )}
-                        </div>
-                        <span className="text-lg font-bold text-pink-600">
-                          ₱{inst.remaining.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="h-2 rounded-full bg-gradient-to-r from-pink-400 to-purple-500"
-                          style={{
-                            width: `${100 - (inst.remaining / inst.total) * 100}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Fixed Bills */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-purple-900 mb-4 flex items-center gap-2">
-                <Home className="w-6 h-6" />
-                Fixed Monthly Bills (₱{totalFixedBills.toLocaleString('en-PH', { minimumFractionDigits: 2 })}/mo)
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {fixedBills.map((bill, idx) => (
-                  <div key={idx} className="border border-purple-200 rounded-lg p-4">
-                    <p className="font-semibold text-gray-800">{bill.name}</p>
-                    <div className="flex items-baseline justify-between mt-2">
-                      <p className="text-sm text-gray-600">Due {bill.dueDate}th</p>
-                      <p className="text-2xl font-bold text-purple-600">
-                        ₱{bill.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Cash Flow Summary */}
-            <div className="bg-gradient-to-br from-purple-500 to-pink-500 text-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold mb-4">Monthly Cash Flow</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-purple-100 text-sm">Income</p>
-                  <p className="text-2xl font-bold">₱{monthlyIncome.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</p>
-                </div>
-                <div>
-                  <p className="text-purple-100 text-sm">Min Payments</p>
-                  <p className="text-2xl font-bold">₱{totalMinPayment.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</p>
-                </div>
-                <div>
-                  <p className="text-purple-100 text-sm">Subscriptions</p>
-                  <p className="text-2xl font-bold">₱{totalSubscriptions.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</p>
-                </div>
-                <div>
-                  <p className="text-purple-100 text-sm">Monthly Buffer</p>
-                  <p className="text-2xl font-bold">₱2,500</p>
-                </div>
-              </div>
-              <div className="mt-4 pt-4 border-t border-purple-300">
-                <p className="text-purple-100 text-sm mb-1">Available after obligations</p>
-                <p className="text-3xl font-bold">
-                  ₱
-                  {(
-                    monthlyIncome -
-                    totalMinPayment -
-                    totalSubscriptions -
-                    totalInstallments -
-                    totalFixedBills
-                  ).toLocaleString('en-PH', { minimumFractionDigits: 0 })}
-                </p>
-              </div>
-            </div>
-
-            {/* Reminders */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-purple-900 mb-4 flex items-center gap-2">
-                <Bell className="w-6 h-6" />
-                Reminders & Alerts
-              </h2>
-              <div className="space-y-3">
-                <div className="border-l-4 border-orange-400 bg-orange-50 p-4 rounded">
-                  <p className="font-semibold text-orange-900">Upcoming Statement Dates</p>
-                  <p className="text-sm text-orange-700 mt-2">
-                    {creditCards
-                      .map(
-                        (card) =>
-                          `${card.name}: ${getDaysUntilStatementDue(card.statementDay)} days`
-                      )
-                      .join(' • ')}
-                  </p>
-                </div>
-                <div className="border-l-4 border-red-400 bg-red-50 p-4 rounded">
-                  <p className="font-semibold text-red-900">High Utilization Cards</p>
-                  <div className="text-sm text-red-700 mt-2 space-y-1">
-                    {creditCards
-                      .filter((card) => (card.balance / card.limit) * 100 > 70)
-                      .map((card) => (
-                        <p key={card.id}>
-                          {card.name}: {((card.balance / card.limit) * 100).toFixed(1)}%
-                        </p>
-                      ))}
-                  </div>
-                </div>
-                <div className="border-l-4 border-blue-400 bg-blue-50 p-4 rounded">
-                  <p className="font-semibold text-blue-900">Grocery Items Needing Replenishment</p>
-                  <p className="text-sm text-blue-700 mt-2">
-                    {groceries.filter((g) => g.status === 'needs purchase').length} items need
-                    replenishment
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
-        )}
+        </header>
 
-        {/* PURCHASES TAB */}
-        {activeTab === 'purchases' && (
-          <div className="space-y-6">
-            {/* Add Purchase Form */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-purple-900 mb-4 flex items-center gap-2">
-                <Plus className="w-6 h-6" />
-                Add New Purchase
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <input
-                  type="number"
-                  placeholder="Amount (₱)"
-                  value={newPurchase.amount}
-                  onChange={(e) => setNewPurchase({ ...newPurchase, amount: e.target.value })}
-                  className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <input
-                  type="date"
-                  value={newPurchase.date}
-                  onChange={(e) => setNewPurchase({ ...newPurchase, date: e.target.value })}
-                  className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <select
-                  value={newPurchase.card}
-                  onChange={(e) => setNewPurchase({ ...newPurchase, card: e.target.value })}
-                  className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  {creditCards.map((card) => (
-                    <option key={card.id} value={card.id}>
-                      {card.name.substring(0, 20)}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={newPurchase.category}
-                  onChange={(e) => setNewPurchase({ ...newPurchase, category: e.target.value })}
-                  className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  {[
-                    'Food',
-                    'Transport',
-                    'Shopping',
-                    'Bills',
-                    'Travel',
-                    'Entertainment',
-                    'Health',
-                    'Groceries',
-                    'Other',
-                  ].map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="Description"
-                  value={newPurchase.description}
-                  onChange={(e) => setNewPurchase({ ...newPurchase, description: e.target.value })}
-                  className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={newPurchase.isNecessity}
-                    onChange={(e) => setNewPurchase({ ...newPurchase, isNecessity: e.target.checked })}
-                    className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-                  />
-                  <span className="text-gray-700">Is Necessity/Recurring Item</span>
-                </label>
-              </div>
-              <button
-                onClick={handleAddPurchase}
-                className="mt-4 w-full md:w-auto px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold rounded-lg hover:shadow-lg transition flex items-center justify-center gap-2"
-              >
-                <Plus className="w-4 h-4" />
-                Add Purchase
-              </button>
-            </div>
-
-            {/* Filters */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="font-semibold text-gray-800 mb-4">Filters</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <select
-                  value={filterCard}
-                  onChange={(e) => setFilterCard(e.target.value)}
-                  className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="all">All Cards</option>
-                  {creditCards.map((card) => (
-                    <option key={card.id} value={card.id}>
-                      {card.name.substring(0, 25)}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="all">All Categories</option>
-                  {[
-                    'Food',
-                    'Transport',
-                    'Shopping',
-                    'Bills',
-                    'Travel',
-                    'Entertainment',
-                    'Health',
-                    'Groceries',
-                    'Other',
-                  ].map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={filterDateRange.start}
-                    onChange={(e) =>
-                      setFilterDateRange({ ...filterDateRange, start: e.target.value })
-                    }
-                    className="flex-1 px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <input
-                    type="date"
-                    value={filterDateRange.end}
-                    onChange={(e) =>
-                      setFilterDateRange({ ...filterDateRange, end: e.target.value })
-                    }
-                    className="flex-1 px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="font-bold text-gray-800 mb-4">Purchases by Category</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={purchasesByCategory}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {purchasesByCategory.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-
-              <div className="bg-white rounded-xl shadow-lg p-6">
-                <h3 className="font-bold text-gray-800 mb-4">Purchases by Card</h3>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={purchasesByCard}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                    >
-                      {purchasesByCard.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Purchase History Table */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold text-purple-900 mb-4">Purchase History</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b-2 border-purple-200">
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Date</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Description</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Category</th>
-                      <th className="text-left py-3 px-4 font-semibold text-gray-800">Card</th>
-                      <th className="text-right py-3 px-4 font-semibold text-gray-800">Amount</th>
-                      <th className="text-center py-3 px-4 font-semibold text-gray-800">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredPurchases.map((purchase) => (
-                      <tr
-                        key={purchase.id}
-                        className="border-b border-purple-100 hover:bg-purple-50 transition"
-                      >
-                        <td className="py-3 px-4">{purchase.date}</td>
-                        <td className="py-3 px-4">{purchase.description}</td>
-                        <td className="py-3 px-4">
-                          <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">
-                            {purchase.category}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-xs">
-                          {creditCards.find((c) => c.id === purchase.card)?.name.substring(0, 15)}
-                        </td>
-                        <td className="py-3 px-4 text-right font-semibold">
-                          ₱{purchase.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => handleDeletePurchase(purchase.id)}
-                            className="text-red-500 hover:text-red-700 transition"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* CREDIT CARDS TAB */}
-        {activeTab === 'cards' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 gap-6">
-              {creditCards.map((card) => {
-                const utilization = (card.balance / card.limit) * 100;
-                const daysUntilDue = getDaysUntilStatementDue(card.statementDay);
-
-                return (
-                  <div
-                    key={card.id}
-                    className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl shadow-lg p-6 border border-purple-200"
-                  >
-                    {editingCard === card.id ? (
-                      <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <input
-                            type="text"
-                            value={card.name}
-                            onChange={(e) =>
-                              handleUpdateCard(card.id, { name: e.target.value })
-                            }
-                            placeholder="Card Name"
-                            className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          />
-                          <input
-                            type="number"
-                            value={card.balance}
-                            onChange={(e) =>
-                              handleUpdateCard(card.id, { balance: parseFloat(e.target.value) })
-                            }
-                            placeholder="Balance"
-                            className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          />
-                          <input
-                            type="number"
-                            value={card.rate}
-                            onChange={(e) =>
-                              handleUpdateCard(card.id, { rate: parseFloat(e.target.value) })
-                            }
-                            placeholder="Interest Rate %"
-                            className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          />
-                          <input
-                            type="number"
-                            value={card.limit}
-                            onChange={(e) =>
-                              handleUpdateCard(card.id, { limit: parseFloat(e.target.value) })
-                            }
-                            placeholder="Credit Limit"
-                            className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          />
-                          <input
-                            type="number"
-                            value={card.minPayment}
-                            onChange={(e) =>
-                              handleUpdateCard(card.id, { minPayment: parseFloat(e.target.value) })
-                            }
-                            placeholder="Min Payment"
-                            className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          />
-                          <input
-                            type="number"
-                            value={card.statementDay}
-                            onChange={(e) =>
-                              handleUpdateCard(card.id, { statementDay: parseInt(e.target.value) })
-                            }
-                            placeholder="Statement Day"
-                            className="px-4 py-2 border border-purple-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          />
-                        </div>
-                        <button
-                          onClick={() => setEditingCard(null)}
-                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition"
-                        >
-                          <Save className="w-4 h-4" />
-                          Save Changes
-                        </button>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="flex items-start justify-between mb-4">
-                          <div>
-                            <h3 className="text-xl font-bold text-gray-800">{card.name}</h3>
-                            {card.notes && <p className="text-sm text-gray-600 mt-1">{card.notes}</p>}
-                          </div>
-                          <button
-                            onClick={() => setEditingCard(card.id)}
-                            className="text-purple-600 hover:text-purple-800 transition"
-                          >
-                            <Edit2 className="w-5 h-5" />
-                          </button>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                          <div>
-                            <p className="text-gray-600 text-sm">Balance</p>
-                            <p className="text-2xl font-bold text-gray-800">
-                              ₱{card.balance.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-gray-600 text-sm">Limit</p>
-                            <p className="text-2xl font-bold text-gray-800">
-                              ₱{card.limit.toLocaleString('en-PH', { minimumFractionDigits: 0 })}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-gray-600 text-sm">Min Payment</p>
-                            <p className="text-2xl font-bold text-gray-800">
-                              ₱{card.minPayment.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-gray-600 text-sm">Interest/mo</p>
-                            <p className="text-2xl font-bold text-gray-800">
-                              ₱{card.interestPerMonth.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-700 font-semibold">
-                              Utilization: {utilization.toFixed(1)}%
-                            </span>
-                            <span className="text-sm text-gray-600">
-                              {daysUntilDue} days until statement due
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-3">
-                            <div
-                              className={`h-3 rounded-full ${getUtilizationColor(utilization)}`}
-                              style={{ width: `${Math.min(utilization, 100)}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-4 pt-4 border-t border-purple-200">
-                          <div>
-                            <p className="text-xs text-gray-600">Interest Rate</p>
-                            <p className="font-semibold text-gray-800">{card.rate}%</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-600">Statement Day</p>
-                            <p className="font-semibold text-gray-800">{card.statementDay}th</p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-gray-600">Available Credit</p>
-                            <p className="font-semibold text-gray-800">
-                              ₱
-                              {(card.limit - card.balance).toLocaleString('en-PH', {
-                                minimumFractionDigits: 2,
-                              })}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Summary */}
-            <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl shadow-lg p-6">
-              <h2 className="text-2xl font-bold mb-4">Total Credit Card Summary</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-purple-100 text-sm">Total Debt</p>
-                  <p className="text-2xl font-bold">
-                    ₱{totalDebt.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-purple-100 text-sm">Total Limit</p>
-                  <p className="text-2xl font-bold">
-                    ₱{totalLimit.toLocaleString('en-PH', { minimumFractionDigits: 0 })}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-purple-100 text-sm">Total Min Payments</p>
-                  <p className="text-2xl font-bold">
-                    ₱{totalMinPayment.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-purple-100 text-sm">Total Interest/mo</p>
-                  <p className="text-2xl font-bold">
-                    ₱{totalInterestPerMonth.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TRAVEL TAB */}
-        {activeTab === 'travel' && (
-          <div className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-3xl font-bold text-purple-900 flex items-center gap-2">
-                <Plane className="w-8 h-8" />
-                Travel Planning
-              </h2>
-              <button
-                onClick={handleAddTrip}
-                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg hover:shadow-lg transition"
-              >
-                <Plus className="w-4 h-4" />
-                Add Trip
-              </button>
-            </div>
-
-            {trips.map((trip) => {
-              const tripExpenses = trip.expenses.reduce((sum, exp) => sum + exp.amount, 0);
-              const paidExpenses = trip.expenses
-                .filter((exp) => exp.paid)
-                .reduce((sum, exp) => sum + exp.amount, 0);
-
+        {/* Navigation Tabs */}
+        <nav className="bg-white border-b border-pink-200 sticky top-16 z-20">
+          <div className="max-w-7xl mx-auto px-4 flex flex-wrap gap-2 py-3">
+            {[
+              { id: 'dashboard', icon: Home, label: 'Dashboard' },
+              { id: 'calendar', icon: Calendar, label: 'Calendar' },
+              { id: 'credit-cards', icon: CreditCard, label: 'Credit Cards' },
+              { id: 'grocery', icon: Package, label: 'Grocery' },
+              { id: 'purchases', icon: ShoppingCart, label: 'Purchases' },
+              { id: 'travel', icon: Plane, label: 'Travel' },
+            ].map((tab) => {
+              const Icon = tab.icon;
               return (
-                <div
-                  key={trip.id}
-                  className="bg-white rounded-xl shadow-lg p-6 border-l-4 border-blue-500"
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded font-semibold transition ${
+                    activeTab === tab.id
+                      ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white'
+                      : 'text-gray-700 hover:bg-pink-100'
+                  }`}
                 >
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-2xl font-bold text-gray-800">{trip.name}</h3>
-                      <p className="text-gray-600">
-                        {trip.destination} • {trip.startDate} to {trip.endDate}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteTrip(trip.id)}
-                      className="text-red-500 hover:text-red-700 transition"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-4 mb-6 pb-6 border-b border-gray-200">
-                    <div>
-                      <p className="text-gray-600 text-sm">Total Cost</p>
-                      <p className="text-2xl font-bold text-gray-800">
-                        ₱{tripExpenses.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600 text-sm">Paid</p>
-                      <p className="text-2xl font-bold text-green-600">
-                        ₱{paidExpenses.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-600 text-sm">Remaining</p>
-                      <p className="text-2xl font-bold text-orange-600">
-                        ₱
-                        {(tripExpenses - paidExpenses).toLocaleString('en-PH', {
-                          minimumFractionDigits: 2,
-                        })}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3 mb-4">
-                    {trip.expenses.map((expense) => (
-                      <div
-                        key={expense.id}
-                        className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <p className="font-semibold text-gray-800">{expense.description}</p>
-                          <p className="text-sm text-gray-600">
-                            {expense.type.charAt(0).toUpperCase() + expense.type.slice(1)} •{' '}
-                            {expense.card
-                              ? creditCards.find((c) => c.id === expense.card)?.name.substring(0, 15)
-                              : 'Cash'}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg font-bold text-gray-800">
-                            ₱{expense.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                          </span>
-                          <button
-                            onClick={() => handleDeleteTripExpense(trip.id, expense.id)}
-                            className="text-red-500 hover:text-red-700 transition"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={() => handleAddTripExpense(trip.id)}
-                    className="w-full px-4 py-2 border-2 border-dashed border-purple-300 text-purple-600 rounded-lg hover:bg-purple-50 transition flex items-center justify-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Expense
-                  </button>
-                </div>
+                  <Icon size={20} /> {tab.label}
+                </button>
               );
             })}
           </div>
-        )}
+        </nav>
 
-        {/* GROCERIES TAB */}
-        {activeTab === 'groceries' && (
-          <div className="space-y-8">
-            {Object.entries(groceriesByCategory).map(([category, items]) => {
-              const monthlyTotal = items.reduce(
-                (sum, item) => sum + calculateMonthlyEquivalent(item.frequencyDays, item.price),
-                0
-              );
-              const needsPurchase = items.filter((i) => i.status === 'needs purchase').length;
-
-              return (
-                <div key={category} className="bg-white rounded-xl shadow-lg p-6">
-                  <div className="flex items-center justify-between mb-4 pb-4 border-b-2 border-purple-200">
-                    <div>
-                      <h3 className="text-2xl font-bold text-purple-900">{category}</h3>
-                      <p className="text-sm text-gray-600">
-                        Monthly equivalent: ₱{monthlyTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                    {needsPurchase > 0 && (
-                      <span className="px-3 py-1 bg-red-100 text-red-700 text-sm font-semibold rounded-full">
-                        {needsPurchase} items due
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-purple-200">
-                          <th className="text-left py-2 px-3 font-semibold text-gray-800">Item</th>
-                          <th className="text-left py-2 px-3 font-semibold text-gray-800">Frequency</th>
-                          <th className="text-right py-2 px-3 font-semibold text-gray-800">Price</th>
-                          <th className="text-right py-2 px-3 font-semibold text-gray-800">
-                            Monthly Equiv
-                          </th>
-                          <th className="text-left py-2 px-3 font-semibold text-gray-800">
-                            Last Purchased
-                          </th>
-                          <th className="text-left py-2 px-3 font-semibold text-gray-800">
-                            Next Purchase
-                          </th>
-                          <th className="text-center py-2 px-3 font-semibold text-gray-800">Status</th>
-                          <th className="text-center py-2 px-3 font-semibold text-gray-800">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {items.map((item) => {
-                          const nextPurchase = getNextPurchaseDate(
-                            item.lastPurchased,
-                            item.frequencyDays
-                          );
-                          const today = new Date().toISOString().split('T')[0];
-                          const isDue = nextPurchase <= today;
-                          const monthlyEquiv = calculateMonthlyEquivalent(
-                            item.frequencyDays,
-                            item.price
-                          );
-
-                          return (
-                            <tr
-                              key={item.id}
-                              className={`border-b border-purple-100 ${
-                                isDue ? 'bg-red-50' : 'hover:bg-purple-50'
-                              } transition`}
-                            >
-                              <td className="py-3 px-3 font-medium text-gray-800">{item.name}</td>
-                              <td className="py-3 px-3 text-gray-600">{item.frequency}</td>
-                              <td className="py-3 px-3 text-right font-semibold">
-                                ₱{item.price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                              </td>
-                              <td className="py-3 px-3 text-right text-gray-700">
-                                ₱{monthlyEquiv.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
-                              </td>
-                              <td className="py-3 px-3 text-gray-600">{item.lastPurchased}</td>
-                              <td className="py-3 px-3 text-gray-600">{nextPurchase}</td>
-                              <td className="py-3 px-3 text-center">
-                                <span
-                                  className={`px-2 py-1 text-xs font-semibold rounded ${
-                                    isDue
-                                      ? 'bg-red-200 text-red-800'
-                                      : 'bg-green-200 text-green-800'
-                                  }`}
-                                >
-                                  {isDue ? 'Needs Purchase' : 'Stocked'}
-                                </span>
-                              </td>
-                              <td className="py-3 px-3 text-center">
-                                {isDue && (
-                                  <button
-                                    onClick={() => handleMarkGroceryPurchased(item.id)}
-                                    className="text-green-600 hover:text-green-800 transition"
-                                  >
-                                    <Check className="w-4 h-4" />
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* CALENDAR TAB */}
-        {activeTab === 'calendar' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-bold text-purple-900">
-                  {monthNames[currentMonth]} {currentYear}
-                </h2>
-                <div className="flex gap-2">
-                  <button className="p-2 hover:bg-purple-100 rounded-lg transition">
-                    <ChevronLeft className="w-5 h-5 text-purple-600" />
-                  </button>
-                  <button className="p-2 hover:bg-purple-100 rounded-lg transition">
-                    <ChevronRight className="w-5 h-5 text-purple-600" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-7 gap-2 mb-4">
-                {dayNames.map((day) => (
-                  <div
-                    key={day}
-                    className="text-center py-2 font-semibold text-gray-700 bg-purple-100 rounded"
-                  >
-                    {day}
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid grid-cols-7 gap-2">
-                {calendarDays.map((day, idx) => {
-                  if (!day)
-                    return <div key={`empty-${idx}`} className="aspect-square bg-gray-50 rounded" />;
-
-                  const events = getEventsForDay(day, currentMonth, currentYear);
-
-                  return (
-                    <div
-                      key={day}
-                      className="aspect-square border-2 border-purple-200 rounded-lg p-2 bg-white hover:bg-purple-50 transition cursor-pointer relative"
-                    >
-                      <p className="font-semibold text-gray-800 text-sm">{day}</p>
-                      <div className="mt-1 space-y-1">
-                        {events.slice(0, 2).map((event, idx) => (
-                          <div
-                            key={idx}
-                            className={`text-xs px-1 rounded truncate text-white font-semibold ${
-                              event.type === 'income'
-                                ? 'bg-green-500'
-                                : event.type === 'statement'
-                                  ? 'bg-orange-500'
-                                  : event.type === 'bill'
-                                    ? 'bg-red-500'
-                                    : event.type === 'subscription'
-                                      ? 'bg-blue-500'
-                                      : 'bg-purple-500'
-                            }`}
-                          >
-                            {event.label}
-                          </div>
-                        ))}
-                        {events.length > 2 && (
-                          <p className="text-xs text-gray-600 px-1">+{events.length - 2} more</p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Calendar Legend */}
-            <div className="bg-white rounded-xl shadow-lg p-6">
-              <h3 className="font-bold text-gray-800 mb-4">Event Legend</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-green-500 rounded" />
-                  <span className="text-sm text-gray-700">Pay Day</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-orange-500 rounded" />
-                  <span className="text-sm text-gray-700">Statement</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-red-500 rounded" />
-                  <span className="text-sm text-gray-700">Bills Due</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 bg-blue-500 rounded" />
-                  <span className="text-sm text-gray-700">Subscription</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Monthly Summary */}
-            <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl shadow-lg p-6">
-              <h3 className="text-2xl font-bold mb-4">
-                {monthNames[currentMonth]} Summary
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <p className="text-purple-100 text-sm">Pay Days</p>
-                  <p className="text-2xl font-bold">2</p>
-                </div>
-                <div>
-                  <p className="text-purple-100 text-sm">Expected Income</p>
-                  <p className="text-2xl font-bold">₱{monthlyIncome.toLocaleString('en-PH', { minimumFractionDigits: 0 })}</p>
-                </div>
-                <div>
-                  <p className="text-purple-100 text-sm">Recurring Costs</p>
-                  <p className="text-2xl font-bold">
-                    ₱{(totalSubscriptions + totalFixedBills).toLocaleString('en-PH', { minimumFractionDigits: 0 })}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-purple-100 text-sm">Available Buffer</p>
-                  <p className="text-2xl font-bold">₱2,500</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Main Content */}
+        <main className="max-w-7xl mx-auto px-4 py-8">
+          {activeTab === 'dashboard' && <DashboardTab />}
+          {activeTab === 'calendar' && <CalendarTab />}
+          {activeTab === 'credit-cards' && <CreditCardsTab />}
+          {activeTab === 'grocery' && <GroceryTab />}
+          {activeTab === 'purchases' && <PurchasesTab />}
+          {activeTab === 'travel' && <TravelTab />}
+        </main>
       </div>
     </div>
   );
