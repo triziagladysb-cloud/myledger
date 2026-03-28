@@ -402,7 +402,6 @@ const MyLedger = () => {
   const deposits = selectedCycle ? Number(selectedCycle.inboundCash.deposits) || 0 : 0;
   const refunds = selectedCycle ? Number(selectedCycle.inboundCash.refunds) || 0 : 0;
   const totalLeft = selectedCycle ? Number(selectedCycle.amount) - totalPayments - totalBills - withdrawals - fees + deposits + refunds : 0;
-  const creditUtilizationPct = getTotalCreditLimit() > 0 ? ((getTotalDebt() / getTotalCreditLimit()) * 100).toFixed(1) : '0.0';
   const totalForecastedDebt = selectedCycle ? creditCards.reduce(function(s, card) {
     var pmt = selectedCycle.payments.find(function(p) { return p.cardId === card.id; });
     var pmtAmt = Number(pmt && pmt.amount ? pmt.amount : 0) || 0;
@@ -490,7 +489,7 @@ const MyLedger = () => {
               </div>
               <div className="bg-blue-50 rounded-lg shadow-md p-6 border-l-4 border-blue-400">
                 <p className="text-gray-600 font-semibold mb-2">Credit Utilization</p>
-                <p className="text-3xl font-bold text-blue-600">{creditUtilizationPct}%</p>
+                <p className="text-3xl font-bold text-blue-600">{((getTotalDebt() / getTotalCreditLimit()) * 100).toFixed(1)}%</p>
               </div>
             </div>
 
@@ -968,7 +967,7 @@ const MyLedger = () => {
                           <p className="text-sm text-gray-600">{getCardName(inst.card)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-gray-800">{formatCurrency(inst.monthlyPayment)}{"/"}mo</p>
+                          <p className="font-bold text-gray-800">{formatCurrency(inst.monthlyPayment)}/mo</p>
                           <p className="text-sm text-gray-600">Remaining: {formatCurrency(inst.remainingBalance)}</p>
                         </div>
                       </div>
@@ -2275,11 +2274,11 @@ const MyLedger = () => {
             </div>
 
             {/* Selected Pay Cycle Panel */}
-            {selectedCycle ? (
+            {selectedCycle && (
                 <div className="bg-white rounded-lg shadow p-6 space-y-6">
                   {/* Cycle Header */}
                   <div className="border-b pb-4">
-                    <h2 className="text-xl font-bold">{selectedCycle.date} Pay — {selectedCycle.source}</h2>
+                    <h2 className="text-xl font-bold">{selectedCycle.date} Pay - {selectedCycle.source}</h2>
                     <p className="text-3xl font-bold text-green-600">₱{Number(selectedCycle.amount).toLocaleString()}</p>
                   </div>
 
@@ -2486,7 +2485,7 @@ const MyLedger = () => {
                     />
                   </div>
                 </div>
-              ) : null}
+              )}
           </div>
         )}
 
