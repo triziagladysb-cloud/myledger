@@ -2502,8 +2502,8 @@ const MyLedger = () => {
           </div>
         )}
 
-      </div> {/* End main content */}
-    </div> {/* End outer wrapper */}
+      </div>
+    </div>
   );
 };
 
