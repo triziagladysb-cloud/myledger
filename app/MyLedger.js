@@ -348,6 +348,61 @@ const MyLedger = () => {
     return items.reduce((sum, item) => sum + getMonthlyEquivalent(item.price, item.frequencyDays), 0);
   };
 
+  // ===== COMPUTED CHART DATA =====
+  // Category Pie Chart
+  const categoryData = Object.entries(
+    purchases.reduce((acc, p) => {
+      acc[p.category] = (acc[p.category] || 0) + Number(p.amount);
+      return acc;
+    }, {})
+  ).map(([name, value]) => ({name, value}));
+  const COLORS = ['#f48fb1', '#ce93d8', '#90caf9', '#80cbc4', '#a5d6a7', '#fff59d', '#ffab91', '#bcaaa4'];
+
+  // Card Pie Chart
+  const cardData = Object.entries(
+    purchases.reduce((acc, p) => {
+      const cardName = p.card === 'cash' ? 'Cash' : creditCards.find(c => c.id === p.card)?.name || p.card;
+      acc[cardName] = (acc[cardName] || 0) + Number(p.amount);
+      return acc;
+    }, {})
+  ).map(([name, value]) => ({name, value}));
+
+  // Monthly Bar Chart
+  const monthlyData = Object.entries(
+    purchases.reduce((acc, p) => {
+      const month = p.date.substring(0, 7);
+      acc[month] = (acc[month] || 0) + Number(p.amount);
+      return acc;
+    }, {})
+  )
+    .sort()
+    .map(([month, amount]) => ({
+      month: new Date(month + '-01').toLocaleDateString('en-US', {year: 'numeric', month: 'short'}),
+      amount
+    }));
+
+  // ===== COMPUTED TRAVEL DATA =====
+  const selectedTrip = trips.find(t => t.id === selectedTripId);
+
+  // ===== COMPUTED CALENDAR DATA =====
+  const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
+  const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
+  const calendarDays = [];
+  for (let i = 0; i < firstDay; i++) calendarDays.push(null);
+  for (let i = 1; i <= daysInMonth; i++) calendarDays.push(i);
+
+  // ===== COMPUTED PAY CYCLE DATA =====
+  const selectedCycle = selectedCycleId ? payCycles.find(c => c.id === selectedCycleId) : null;
+
+  // ===== COMPUTED TOTAL LEFT FOR CYCLE =====
+  const totalPayments = selectedCycle ? selectedCycle.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0) : 0;
+  const totalBills = selectedCycle ? selectedCycle.billPayments.reduce((s, b) => s + (Number(b.amount) || 0), 0) : 0;
+  const withdrawals = selectedCycle ? Number(selectedCycle.cashExpenses.withdrawals) || 0 : 0;
+  const fees = selectedCycle ? Number(selectedCycle.cashExpenses.fees) || 0 : 0;
+  const deposits = selectedCycle ? Number(selectedCycle.inboundCash.deposits) || 0 : 0;
+  const refunds = selectedCycle ? Number(selectedCycle.inboundCash.refunds) || 0 : 0;
+  const totalLeft = selectedCycle ? Number(selectedCycle.amount) - totalPayments - totalBills - withdrawals - fees + deposits + refunds : 0;
+
   // ===== RETURN & TAB NAVIGATION =====
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 p-4 md:p-8">
@@ -1677,91 +1732,51 @@ const MyLedger = () => {
               {/* Category Pie Chart */}
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold mb-4">Spending by Category</h3>
-                {(() => {
-                  const categoryData = Object.entries(
-                    purchases.reduce((acc, p) => {
-                      acc[p.category] = (acc[p.category] || 0) + Number(p.amount);
-                      return acc;
-                    }, {})
-                  ).map(([name, value]) => ({name, value}));
-
-                  const COLORS = ['#f48fb1', '#ce93d8', '#90caf9', '#80cbc4', '#a5d6a7', '#fff59d', '#ffab91', '#bcaaa4'];
-
-                  return categoryData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={250}>
-                      <PieChart>
-                        <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
-                          {categoryData.map((entry, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip formatter={(v) => `₱${Number(v).toLocaleString()}`} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : <p className="text-gray-500">No purchases yet</p>;
-                })()}
+                {categoryData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie data={categoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
+                        {categoryData.map((entry, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip formatter={(v) => `₱${Number(v).toLocaleString()}`} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : <p className="text-gray-500">No purchases yet</p>}
               </div>
 
               {/* Card Pie Chart */}
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="text-lg font-semibold mb-4">Spending by Card</h3>
-                {(() => {
-                  const cardData = Object.entries(
-                    purchases.reduce((acc, p) => {
-                      const cardName = p.card === 'cash' ? 'Cash' : creditCards.find(c => c.id === p.card)?.name || p.card;
-                      acc[cardName] = (acc[cardName] || 0) + Number(p.amount);
-                      return acc;
-                    }, {})
-                  ).map(([name, value]) => ({name, value}));
-
-                  const COLORS = ['#f48fb1', '#ce93d8', '#90caf9', '#80cbc4', '#a5d6a7', '#fff59d', '#ffab91', '#bcaaa4'];
-
-                  return cardData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={250}>
-                      <PieChart>
-                        <Pie data={cardData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
-                          {cardData.map((entry, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                        </Pie>
-                        <Tooltip formatter={(v) => `₱${Number(v).toLocaleString()}`} />
-                        <Legend />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : <p className="text-gray-500">No purchases yet</p>;
-                })()}
+                {cardData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={250}>
+                    <PieChart>
+                      <Pie data={cardData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80}>
+                        {cardData.map((entry, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip formatter={(v) => `₱${Number(v).toLocaleString()}`} />
+                      <Legend />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : <p className="text-gray-500">No purchases yet</p>}
               </div>
             </div>
 
             {/* Monthly Bar Chart */}
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-semibold mb-4">Monthly Spending</h3>
-              {(() => {
-                const monthlyData = Object.entries(
-                  purchases.reduce((acc, p) => {
-                    const month = p.date.substring(0, 7);
-                    acc[month] = (acc[month] || 0) + Number(p.amount);
-                    return acc;
-                  }, {})
-                )
-                  .sort()
-                  .map(([month, amount]) => ({
-                    month: new Date(month + '-01').toLocaleDateString('en-US', {year: 'numeric', month: 'short'}),
-                    amount
-                  }));
-
-                const COLORS = ['#f48fb1', '#ce93d8', '#90caf9', '#80cbc4', '#a5d6a7', '#fff59d', '#ffab91', '#bcaaa4'];
-
-                return monthlyData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={monthlyData}>
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip formatter={(v) => `₱${Number(v).toLocaleString()}`} />
-                      <Bar dataKey="amount" fill={COLORS[0]}>
-                        {monthlyData.map((entry, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : <p className="text-gray-500">No purchases yet</p>;
-              })()}
+              {monthlyData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={monthlyData}>
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip formatter={(v) => `₱${Number(v).toLocaleString()}`} />
+                    <Bar dataKey="amount" fill={COLORS[0]}>
+                      {monthlyData.map((entry, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <p className="text-gray-500">No purchases yet</p>}
             </div>
           </div>
         )}
@@ -1860,13 +1875,11 @@ const MyLedger = () => {
 
             {/* Trip Detail */}
             <div className="md:col-span-2 bg-white rounded-lg shadow p-6">
-              {selectedTripId ? (() => {
-                const trip = trips.find(t => t.id === selectedTripId);
-                return trip ? (
+              {selectedTrip ? (
                   <div className="space-y-6">
                     {/* Trip Header */}
                     <div className="border-b pb-4">
-                      {editingTripId === trip.id ? (
+                      {editingTripId === selectedTrip.id ? (
                         <div className="space-y-2">
                           <input
                             type="text"
@@ -1902,7 +1915,7 @@ const MyLedger = () => {
                           <div className="flex gap-2">
                             <button
                               onClick={() => {
-                                setTrips(trips.map(t => t.id === trip.id ? {...t, ...editTripData} : t));
+                                setTrips(trips.map(t => t.id === selectedTrip.id ? {...t, ...editTripData} : t));
                                 setEditingTripId(null);
                               }}
                               className="bg-green-100 text-green-700 px-4 py-2 rounded font-medium"
@@ -1921,21 +1934,21 @@ const MyLedger = () => {
                         <div>
                           <div className="flex justify-between items-start">
                             <div>
-                              <h2 className="text-2xl font-bold">{trip.name}</h2>
-                              <p className="text-gray-600">{trip.destination}</p>
-                              <p className="text-sm text-gray-500">{trip.startDate} to {trip.endDate}</p>
+                              <h2 className="text-2xl font-bold">{selectedTrip.name}</h2>
+                              <p className="text-gray-600">{selectedTrip.destination}</p>
+                              <p className="text-sm text-gray-500">{selectedTrip.startDate} to {selectedTrip.endDate}</p>
                             </div>
                             <button
                               onClick={() => {
-                                setEditingTripId(trip.id);
-                                setEditTripData(trip);
+                                setEditingTripId(selectedTrip.id);
+                                setEditTripData(selectedTrip);
                               }}
                               className="bg-blue-100 text-blue-600 px-3 py-2 rounded font-medium"
                             >
                               Edit
                             </button>
                           </div>
-                          {trip.notes && <p className="text-sm mt-2 text-gray-700">{trip.notes}</p>}
+                          {selectedTrip.notes && <p className="text-sm mt-2 text-gray-700">{selectedTrip.notes}</p>}
                         </div>
                       )}
                     </div>
@@ -2028,7 +2041,7 @@ const MyLedger = () => {
                               const newId = 'expense-' + Date.now();
                               const newExpense = {...expenseFormData, id: newId};
                               setTrips(trips.map(t =>
-                                t.id === trip.id
+                                t.id === selectedTrip.id
                                   ? {...t, expenses: [...(t.expenses || []), newExpense]}
                                   : t
                               ));
@@ -2053,7 +2066,7 @@ const MyLedger = () => {
                     )}
 
                     {/* Expenses Table */}
-                    {trip.expenses && trip.expenses.length > 0 && (
+                    {selectedTrip.expenses && selectedTrip.expenses.length > 0 && (
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead className="bg-gray-100">
@@ -2068,7 +2081,7 @@ const MyLedger = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {trip.expenses.map(expense => (
+                            {selectedTrip.expenses.map(expense => (
                               <tr key={expense.id} className="border-t hover:bg-gray-50">
                                 <td className="px-4 py-2">{expense.description}</td>
                                 <td className="px-4 py-2 text-right">₱{Number(expense.amount).toLocaleString()}</td>
@@ -2078,7 +2091,7 @@ const MyLedger = () => {
                                 <td className="px-4 py-2">{expense.date}</td>
                                 <td className="px-4 py-2 text-center">
                                   <button
-                                    onClick={() => setTrips(trips.map(t => t.id === trip.id ? {...t, expenses: t.expenses.filter(e => e.id !== expense.id)} : t))}
+                                    onClick={() => setTrips(trips.map(t => t.id === selectedTrip.id ? {...t, expenses: t.expenses.filter(e => e.id !== expense.id)} : t))}
                                     className="bg-pink-100 text-pink-600 px-2 py-1 rounded text-xs font-medium"
                                   >
                                     Delete
@@ -2096,23 +2109,22 @@ const MyLedger = () => {
                       <div className="grid grid-cols-3 gap-4">
                         <div className="bg-blue-50 rounded p-4">
                           <p className="text-gray-600 text-sm">Total Cost</p>
-                          <p className="text-2xl font-bold">₱{(trip.expenses || []).reduce((s, e) => s + Number(e.amount), 0).toLocaleString()}</p>
+                          <p className="text-2xl font-bold">₱{(selectedTrip.expenses || []).reduce((s, e) => s + Number(e.amount), 0).toLocaleString()}</p>
                         </div>
                         <div className="bg-green-50 rounded p-4">
                           <p className="text-gray-600 text-sm">Paid Total</p>
-                          <p className="text-2xl font-bold">₱{(trip.expenses || []).filter(e => e.paid).reduce((s, e) => s + Number(e.amount), 0).toLocaleString()}</p>
+                          <p className="text-2xl font-bold">₱{(selectedTrip.expenses || []).filter(e => e.paid).reduce((s, e) => s + Number(e.amount), 0).toLocaleString()}</p>
                         </div>
                         <div className="bg-red-50 rounded p-4">
                           <p className="text-gray-600 text-sm">Unpaid Total</p>
-                          <p className="text-2xl font-bold">₱{(trip.expenses || []).filter(e => !e.paid).reduce((s, e) => s + Number(e.amount), 0).toLocaleString()}</p>
+                          <p className="text-2xl font-bold">₱{(selectedTrip.expenses || []).filter(e => !e.paid).reduce((s, e) => s + Number(e.amount), 0).toLocaleString()}</p>
                         </div>
                       </div>
                     </div>
                   </div>
-                ) : null;
-              })() : (
-                <p className="text-gray-500 text-center py-8">Select a trip to view details</p>
-              )}
+                ) : (
+                  <p className="text-gray-500 text-center py-8">Select a trip to view details</p>
+                )}
             </div>
           </div>
         )}
@@ -2147,51 +2159,40 @@ const MyLedger = () => {
               </div>
 
               {/* Calendar Grid */}
-              {(() => {
-                const firstDay = new Date(calendarYear, calendarMonth, 1).getDay();
-                const daysInMonth = new Date(calendarYear, calendarMonth + 1, 0).getDate();
-                const days = [];
+              <div className="grid grid-cols-7 gap-1">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+                  <div key={d} className="font-bold text-center p-2">{d}</div>
+                ))}
+                {calendarDays.map((day, i) => {
+                  if (!day) return <div key={`empty-${i}`} className="p-4 bg-gray-50"></div>;
 
-                for (let i = 0; i < firstDay; i++) days.push(null);
-                for (let i = 1; i <= daysInMonth; i++) days.push(i);
+                  const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const hasCycle = payCycles.some(c => c.date === dateStr);
+                  const hasSubscription = subscriptions.some(s => new Date(s.nextDate).toISOString().split('T')[0] === dateStr);
+                  const hasBill = fixedBills.some(b => new Date(b.dueDate).toISOString().split('T')[0] === dateStr);
 
-                return (
-                  <div className="grid grid-cols-7 gap-1">
-                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
-                      <div key={d} className="font-bold text-center p-2">{d}</div>
-                    ))}
-                    {days.map((day, i) => {
-                      if (!day) return <div key={`empty-${i}`} className="p-4 bg-gray-50"></div>;
-
-                      const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                      const hasCycle = payCycles.some(c => c.date === dateStr);
-                      const hasSubscription = subscriptions.some(s => new Date(s.nextDate).toISOString().split('T')[0] === dateStr);
-                      const hasBill = fixedBills.some(b => new Date(b.dueDate).toISOString().split('T')[0] === dateStr);
-
-                      return (
-                        <button
-                          key={day}
-                          onClick={() => {
-                            setSelectedDate(dateStr);
-                            const cycle = payCycles.find(c => c.date === dateStr);
-                            if (cycle) setSelectedCycleId(cycle.id);
-                          }}
-                          className={`p-4 rounded border-2 relative ${
-                            selectedDate === dateStr ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
-                          }`}
-                        >
-                          <div className="font-medium">{day}</div>
-                          <div className="flex gap-1 mt-1 justify-center text-xs">
-                            {hasCycle && <span className="w-2 h-2 bg-green-500 rounded-full"></span>}
-                            {hasSubscription && <span className="w-2 h-2 bg-blue-500 rounded-full"></span>}
-                            {hasBill && <span className="w-2 h-2 bg-red-500 rounded-full"></span>}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
+                  return (
+                    <button
+                      key={day}
+                      onClick={() => {
+                        setSelectedDate(dateStr);
+                        const cycle = payCycles.find(c => c.date === dateStr);
+                        if (cycle) setSelectedCycleId(cycle.id);
+                      }}
+                      className={`p-4 rounded border-2 relative ${
+                        selectedDate === dateStr ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="font-medium">{day}</div>
+                      <div className="flex gap-1 mt-1 justify-center text-xs">
+                        {hasCycle && <span className="w-2 h-2 bg-green-500 rounded-full"></span>}
+                        {hasSubscription && <span className="w-2 h-2 bg-blue-500 rounded-full"></span>}
+                        {hasBill && <span className="w-2 h-2 bg-red-500 rounded-full"></span>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Add Pay Cycle Button */}
@@ -2268,21 +2269,19 @@ const MyLedger = () => {
             </div>
 
             {/* Selected Pay Cycle Panel */}
-            {selectedCycleId && (() => {
-              const cycle = payCycles.find(c => c.id === selectedCycleId);
-              return cycle ? (
+            {selectedCycle ? (
                 <div className="bg-white rounded-lg shadow p-6 space-y-6">
                   {/* Cycle Header */}
                   <div className="border-b pb-4">
-                    <h2 className="text-xl font-bold">{cycle.date} Pay — {cycle.source}</h2>
-                    <p className="text-3xl font-bold text-green-600">₱{Number(cycle.amount).toLocaleString()}</p>
+                    <h2 className="text-xl font-bold">{selectedCycle.date} Pay — {selectedCycle.source}</h2>
+                    <p className="text-3xl font-bold text-green-600">₱{Number(selectedCycle.amount).toLocaleString()}</p>
                   </div>
 
                   {/* Card Payments */}
                   <div>
                     <h3 className="font-semibold mb-3 text-lg">Card Payments</h3>
                     <div className="space-y-2">
-                      {cycle.payments.map((payment, i) => (
+                      {selectedCycle.payments.map((payment, i) => (
                         <div key={i} className="flex items-center gap-4 p-3 bg-gray-50 rounded">
                           <div className="font-medium min-w-16">{payment.label}</div>
                           <input
@@ -2291,9 +2290,9 @@ const MyLedger = () => {
                             placeholder="₱0"
                             value={payment.amount}
                             onChange={e => {
-                              const newPayments = [...cycle.payments];
+                              const newPayments = [...selectedCycle.payments];
                               newPayments[i] = {...payment, amount: e.target.value};
-                              setPayCycles(payCycles.map(c => c.id === cycle.id ? {...c, payments: newPayments} : c));
+                              setPayCycles(payCycles.map(c => c.id === selectedCycle.id ? {...c, payments: newPayments} : c));
                             }}
                             className="border rounded px-3 py-2 flex-1"
                           />
@@ -2310,9 +2309,9 @@ const MyLedger = () => {
                                       : card
                                   ));
                                 }
-                                const newPayments = [...cycle.payments];
+                                const newPayments = [...selectedCycle.payments];
                                 newPayments[i] = {...payment, paid: !payment.paid};
-                                setPayCycles(payCycles.map(c => c.id === cycle.id ? {...c, payments: newPayments} : c));
+                                setPayCycles(payCycles.map(c => c.id === selectedCycle.id ? {...c, payments: newPayments} : c));
                               }}
                               className="w-4 h-4"
                             />
@@ -2324,11 +2323,11 @@ const MyLedger = () => {
                   </div>
 
                   {/* Bills */}
-                  {cycle.billPayments && cycle.billPayments.length > 0 && (
+                  {selectedCycle.billPayments && selectedCycle.billPayments.length > 0 && (
                     <div>
                       <h3 className="font-semibold mb-3 text-lg">Bills</h3>
                       <div className="space-y-2">
-                        {cycle.billPayments.map((bill, i) => (
+                        {selectedCycle.billPayments.map((bill, i) => (
                           <div key={i} className="flex items-center gap-4 p-3 bg-gray-50 rounded">
                             <div className="font-medium min-w-24">{bill.name}</div>
                             <input
@@ -2337,9 +2336,9 @@ const MyLedger = () => {
                               placeholder="₱0"
                               value={bill.amount}
                               onChange={e => {
-                                const newBills = [...cycle.billPayments];
+                                const newBills = [...selectedCycle.billPayments];
                                 newBills[i] = {...bill, amount: e.target.value};
-                                setPayCycles(payCycles.map(c => c.id === cycle.id ? {...c, billPayments: newBills} : c));
+                                setPayCycles(payCycles.map(c => c.id === selectedCycle.id ? {...c, billPayments: newBills} : c));
                               }}
                               className="border rounded px-3 py-2 flex-1"
                             />
@@ -2348,9 +2347,9 @@ const MyLedger = () => {
                                 type="checkbox"
                                 checked={bill.paid}
                                 onChange={() => {
-                                  const newBills = [...cycle.billPayments];
+                                  const newBills = [...selectedCycle.billPayments];
                                   newBills[i] = {...bill, paid: !bill.paid};
-                                  setPayCycles(payCycles.map(c => c.id === cycle.id ? {...c, billPayments: newBills} : c));
+                                  setPayCycles(payCycles.map(c => c.id === selectedCycle.id ? {...c, billPayments: newBills} : c));
                                 }}
                                 className="w-4 h-4"
                               />
@@ -2372,9 +2371,9 @@ const MyLedger = () => {
                           type="text"
                           inputMode="decimal"
                           placeholder="₱0"
-                          value={cycle.cashExpenses.withdrawals}
+                          value={selectedCycle.cashExpenses.withdrawals}
                           onChange={e => setPayCycles(payCycles.map(c =>
-                            c.id === cycle.id
+                            c.id === selectedCycle.id
                               ? {...c, cashExpenses: {...c.cashExpenses, withdrawals: e.target.value}}
                               : c
                           ))}
@@ -2387,9 +2386,9 @@ const MyLedger = () => {
                           type="text"
                           inputMode="decimal"
                           placeholder="₱0"
-                          value={cycle.cashExpenses.fees}
+                          value={selectedCycle.cashExpenses.fees}
                           onChange={e => setPayCycles(payCycles.map(c =>
-                            c.id === cycle.id
+                            c.id === selectedCycle.id
                               ? {...c, cashExpenses: {...c.cashExpenses, fees: e.target.value}}
                               : c
                           ))}
@@ -2409,9 +2408,9 @@ const MyLedger = () => {
                           type="text"
                           inputMode="decimal"
                           placeholder="₱0"
-                          value={cycle.inboundCash.deposits}
+                          value={selectedCycle.inboundCash.deposits}
                           onChange={e => setPayCycles(payCycles.map(c =>
-                            c.id === cycle.id
+                            c.id === selectedCycle.id
                               ? {...c, inboundCash: {...c.inboundCash, deposits: e.target.value}}
                               : c
                           ))}
@@ -2424,9 +2423,9 @@ const MyLedger = () => {
                           type="text"
                           inputMode="decimal"
                           placeholder="₱0"
-                          value={cycle.inboundCash.refunds}
+                          value={selectedCycle.inboundCash.refunds}
                           onChange={e => setPayCycles(payCycles.map(c =>
-                            c.id === cycle.id
+                            c.id === selectedCycle.id
                               ? {...c, inboundCash: {...c.inboundCash, refunds: e.target.value}}
                               : c
                           ))}
@@ -2437,31 +2436,19 @@ const MyLedger = () => {
                   </div>
 
                   {/* Total Left */}
-                  {(() => {
-                    const totalPayments = cycle.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-                    const totalBills = cycle.billPayments.reduce((s, b) => s + (Number(b.amount) || 0), 0);
-                    const withdrawals = Number(cycle.cashExpenses.withdrawals) || 0;
-                    const fees = Number(cycle.cashExpenses.fees) || 0;
-                    const deposits = Number(cycle.inboundCash.deposits) || 0;
-                    const refunds = Number(cycle.inboundCash.refunds) || 0;
-                    const totalLeft = Number(cycle.amount) - totalPayments - totalBills - withdrawals - fees + deposits + refunds;
-
-                    return (
-                      <div className="bg-blue-50 border-2 border-blue-200 rounded p-4">
-                        <p className="text-gray-600 text-sm mb-1">Total Left After Allocation</p>
-                        <p className={`text-3xl font-bold ${totalLeft >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
-                          ₱{totalLeft.toLocaleString()}
-                        </p>
-                      </div>
-                    );
-                  })()}
+                  <div className="bg-blue-50 border-2 border-blue-200 rounded p-4">
+                    <p className="text-gray-600 text-sm mb-1">Total Left After Allocation</p>
+                    <p className={`text-3xl font-bold ${totalLeft >= 0 ? 'text-blue-600' : 'text-red-600'}`}>
+                      ₱{totalLeft.toLocaleString()}
+                    </p>
+                  </div>
 
                   {/* Forecasted Balances */}
                   <div>
                     <h3 className="font-semibold mb-3 text-lg">Forecasted Card Balances</h3>
                     <div className="space-y-2">
                       {creditCards.map((card, i) => {
-                        const payment = cycle.payments.find(p => p.cardId === card.id);
+                        const payment = selectedCycle.payments.find(p => p.cardId === card.id);
                         const paymentAmount = Number(payment?.amount) || 0;
                         const forecasted = Number(card.balance) - paymentAmount;
                         return (
@@ -2478,7 +2465,7 @@ const MyLedger = () => {
                       <p className="text-gray-600 text-sm mb-1">Total Forecasted Debt</p>
                       <p className="text-2xl font-bold text-blue-600">
                         ₱{creditCards.reduce((s, card) => {
-                          const payment = cycle.payments.find(p => p.cardId === card.id);
+                          const payment = selectedCycle.payments.find(p => p.cardId === card.id);
                           const paymentAmount = Number(payment?.amount) || 0;
                           return s + Math.max(0, Number(card.balance) - paymentAmount);
                         }, 0).toLocaleString()}
@@ -2490,15 +2477,14 @@ const MyLedger = () => {
                   <div>
                     <label className="block font-medium mb-2">Notes</label>
                     <textarea
-                      value={cycle.notes || ''}
-                      onChange={e => setPayCycles(payCycles.map(c => c.id === cycle.id ? {...c, notes: e.target.value} : c))}
+                      value={selectedCycle.notes || ''}
+                      onChange={e => setPayCycles(payCycles.map(c => c.id === selectedCycle.id ? {...c, notes: e.target.value} : c))}
                       className="border rounded px-3 py-2 w-full"
                       rows="3"
                     />
                   </div>
                 </div>
-              ) : null;
-            })()}
+              ) : null}
           </div>
         )}
 
