@@ -778,9 +778,9 @@ const MyLedger = () => {
     }
   }, [monthlyIncome]);
 
-  // Calculate suggested payments using avalanche method
+  // Calculate suggested payments using avalanche method - FIXED BUG #1
   const calculateSuggestedPayments = useCallback(() => {
-    const totalMonthlyIncome = 200000; // Forecast base
+    const totalMonthlyIncome = 200000;
     const totalFixedBills = fixedBills.reduce((sum, bill) => sum + bill.amount, 0);
     const totalSubscriptions = subscriptions.reduce(
       (sum, sub) => sum + (sub.status === 'Active' ? sub.amount : 0),
@@ -802,7 +802,7 @@ const MyLedger = () => {
     if (availableForDebt > 0 && sorted.length > 0) {
       const extra = availableForDebt - totalMinPayments;
       if (extra > 0 && sorted[0]) {
-        suggested[sorted[0].id] = card.minPayment + extra;
+        suggested[sorted[0].id] = sorted[0].minPayment + extra;
       }
     }
 
@@ -812,7 +812,7 @@ const MyLedger = () => {
   // Get payment day dates for the month
   const getPayDayDates = useCallback((month, year) => {
     const dates = [];
-    const lastPaid = new Date(2026, 2, 27); // March 27, 2026
+    const lastPaid = new Date(2026, 2, 27);
     const current = new Date(year, month, 1);
 
     let payDate = new Date(lastPaid);
@@ -832,7 +832,7 @@ const MyLedger = () => {
   const getArchyPayDates = useCallback((month, year) => {
     const dates = [];
     const invoiceDay = 1;
-    const paymentDay = 7; // ~5 business days
+    const paymentDay = 7;
 
     if (month === new Date().getMonth() && year === new Date().getFullYear()) {
       dates.push(paymentDay);
@@ -847,7 +847,6 @@ const MyLedger = () => {
     const events = [];
     const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-    // Check for pay days
     const payDays = getPayDayDates(calendarMonth, calendarYear);
     if (payDays.includes(day)) {
       events.push({
@@ -858,7 +857,6 @@ const MyLedger = () => {
       });
     }
 
-    // Check for Archy payment
     if (day === 7) {
       events.push({
         type: 'archy',
@@ -868,7 +866,6 @@ const MyLedger = () => {
       });
     }
 
-    // Check for subscriptions
     subscriptions.forEach((sub) => {
       if (sub.day === day && sub.status === 'Active') {
         events.push({
@@ -880,7 +877,6 @@ const MyLedger = () => {
       }
     });
 
-    // Check for fixed bills
     fixedBills.forEach((bill) => {
       if (bill.day === day) {
         events.push({
@@ -892,7 +888,6 @@ const MyLedger = () => {
       }
     });
 
-    // Check for statement dates
     creditCards.forEach((card) => {
       if (card.statementDay === day) {
         events.push({
@@ -904,7 +899,6 @@ const MyLedger = () => {
       }
     });
 
-    // Check for trip dates
     trips.forEach((trip) => {
       const tripStart = new Date(trip.startDate);
       const tripEnd = new Date(trip.endDate);
@@ -920,8 +914,7 @@ const MyLedger = () => {
       }
     });
 
-    // Check for grocery dates (quarterly)
-    const months = [2, 5, 8, 11]; // March, June, September, December
+    const months = [2, 5, 8, 11];
     if (months.includes(calendarMonth) && day === 30) {
       events.push({
         type: 'grocery',
@@ -958,6 +951,19 @@ const MyLedger = () => {
 
   // Dashboard Tab
   const DashboardTab = () => {
+    const [editingSavings, setEditingSavings] = useState(null);
+    const [savingsEditData, setSavingsEditData] = useState({});
+    const [showAddSavings, setShowAddSavings] = useState(false);
+    const [newSavingsData, setNewSavingsData] = useState({ name: '', balance: '' });
+
+    const [editingSubscription, setEditingSubscription] = useState(null);
+    const [subEditData, setSubEditData] = useState({});
+    const [showAddSubscription, setShowAddSubscription] = useState(false);
+
+    const [editingBill, setEditingBill] = useState(null);
+    const [billEditData, setBillEditData] = useState({});
+    const [showAddBill, setShowAddBill] = useState(false);
+
     const totalDebt = creditCards.reduce((sum, card) => sum + card.balance, 0);
     const totalLimit = creditCards.reduce((sum, card) => sum + card.limit, 0);
     const totalSavings = savingsAccounts.reduce((sum, acc) => sum + acc.balance, 0);
@@ -970,6 +976,71 @@ const MyLedger = () => {
     const monthlyBillsTotal = fixedBills.reduce((sum, bill) => sum + bill.amount, 0);
     const monthlyInstallments = installments.reduce((sum, inst) => sum + inst.monthlyPayment, 0);
     const totalMonthlyObligations = monthlySubscriptionTotal + monthlyBillsTotal + monthlyInstallments;
+
+    const handleSaveSavingsEdit = () => {
+      setSavingsAccounts(
+        savingsAccounts.map((acc) =>
+          acc.id === editingSavings ? { ...acc, ...savingsEditData } : acc
+        )
+      );
+      setEditingSavings(null);
+    };
+
+    const handleAddSavings = () => {
+      if (newSavingsData.name) {
+        setSavingsAccounts([
+          ...savingsAccounts,
+          {
+            id: 'savings-' + Date.now(),
+            name: newSavingsData.name,
+            balance: parseFloat(newSavingsData.balance) || 0,
+          },
+        ]);
+        setNewSavingsData({ name: '', balance: '' });
+        setShowAddSavings(false);
+      }
+    };
+
+    const handleSaveSubscriptionEdit = () => {
+      setSubscriptions(
+        subscriptions.map((sub) =>
+          sub.id === editingSubscription ? { ...sub, ...subEditData } : sub
+        )
+      );
+      setEditingSubscription(null);
+    };
+
+    const handleAddSubscription = () => {
+      const newSub = {
+        id: 'sub-' + Date.now(),
+        name: '',
+        amount: '',
+        day: '',
+        card: creditCards[0]?.id || '',
+        status: 'Active',
+      };
+      setSubscriptions([...subscriptions, newSub]);
+    };
+
+    const handleSaveBillEdit = () => {
+      setFixedBills(
+        fixedBills.map((bill) =>
+          bill.id === editingBill ? { ...bill, ...billEditData } : bill
+        )
+      );
+      setEditingBill(null);
+    };
+
+    const handleAddBill = () => {
+      const newBill = {
+        id: 'bill-' + Date.now(),
+        name: '',
+        amount: '',
+        day: '',
+        status: 'Active',
+      };
+      setFixedBills([...fixedBills, newBill]);
+    };
 
     return (
       <div className="space-y-6">
@@ -993,7 +1064,6 @@ const MyLedger = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Total Debt Card */}
           <div className="bg-gradient-to-br from-red-100 to-pink-100 rounded-lg p-6 shadow">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Total Debt</h3>
@@ -1003,7 +1073,6 @@ const MyLedger = () => {
             <p className="text-sm text-gray-600 mt-2">Across {creditCards.length} cards</p>
           </div>
 
-          {/* Total Savings Card */}
           <div className="bg-gradient-to-br from-blue-100 to-cyan-100 rounded-lg p-6 shadow">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Total Savings</h3>
@@ -1013,7 +1082,6 @@ const MyLedger = () => {
             <p className="text-sm text-gray-600 mt-2">Across {savingsAccounts.length} accounts</p>
           </div>
 
-          {/* Credit Utilization Card */}
           <div className="bg-gradient-to-br from-purple-100 to-pink-100 rounded-lg p-6 shadow">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Credit Utilization</h3>
@@ -1024,7 +1092,6 @@ const MyLedger = () => {
           </div>
         </div>
 
-        {/* Monthly Obligations */}
         <div className="bg-gradient-to-r from-pink-50 to-blue-50 rounded-lg p-6 shadow">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Monthly Obligations</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -1049,36 +1116,114 @@ const MyLedger = () => {
 
         {/* Savings Accounts */}
         <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-6 shadow">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Savings Accounts</h3>
-          <div className="space-y-3">
-            {savingsAccounts.map((account) => (
-              <div key={account.id} className="flex items-center justify-between bg-white p-4 rounded">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800">Savings Accounts</h3>
+            <button
+              onClick={() => setShowAddSavings(!showAddSavings)}
+              className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 flex items-center gap-1"
+            >
+              <Plus size={16} /> Add
+            </button>
+          </div>
+
+          {showAddSavings && (
+            <div className="bg-white p-4 rounded mb-4 border border-blue-200">
+              <div className="grid grid-cols-3 gap-2">
                 <input
                   type="text"
-                  value={account.name}
-                  onChange={(e) =>
-                    setSavingsAccounts(
-                      savingsAccounts.map((acc) =>
-                        acc.id === account.id ? { ...acc, name: e.target.value } : acc
-                      )
-                    )
-                  }
-                  className="text-sm font-medium text-gray-800 flex-1 border-b border-gray-300 px-2 py-1"
                   placeholder="Account name"
+                  value={newSavingsData.name}
+                  onChange={(e) => setNewSavingsData({ ...newSavingsData, name: e.target.value })}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm"
                 />
                 <input
-                  type="number"
-                  value={account.balance}
-                  onChange={(e) =>
-                    setSavingsAccounts(
-                      savingsAccounts.map((acc) =>
-                        acc.id === account.id ? { ...acc, balance: parseFloat(e.target.value) || 0 } : acc
-                      )
-                    )
-                  }
-                  className="text-lg font-bold text-blue-700 border-b border-gray-300 px-2 py-1 w-32 text-right"
-                  placeholder="0"
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="Balance"
+                  value={newSavingsData.balance}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                      setNewSavingsData({ ...newSavingsData, balance: val });
+                    }
+                  }}
+                  className="border border-gray-300 rounded px-2 py-1 text-sm"
                 />
+                <button
+                  onClick={handleAddSavings}
+                  className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600 font-semibold"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {savingsAccounts.map((account) => (
+              <div key={account.id} className="bg-white p-4 rounded border border-blue-100 flex items-center justify-between">
+                {editingSavings === account.id ? (
+                  <div className="flex-1 grid grid-cols-3 gap-2 items-center">
+                    <input
+                      type="text"
+                      placeholder="Account name"
+                      value={savingsEditData.name || ''}
+                      onChange={(e) => setSavingsEditData({ ...savingsEditData, name: e.target.value })}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="Balance"
+                      value={savingsEditData.balance || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                          setSavingsEditData({ ...savingsEditData, balance: parseFloat(val) || 0 });
+                        }
+                      }}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                    <div className="flex gap-1">
+                      <button
+                        onClick={handleSaveSavingsEdit}
+                        className="bg-green-500 text-white px-2 py-1 rounded text-sm hover:bg-green-600 flex-1"
+                      >
+                        <Check size={14} />
+                      </button>
+                      <button
+                        onClick={() => setEditingSavings(null)}
+                        className="bg-gray-500 text-white px-2 py-1 rounded text-sm hover:bg-gray-600 flex-1"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-800">{account.name}</p>
+                      <p className="text-sm text-gray-600">₱{account.balance.toLocaleString('en-PH', { maximumFractionDigits: 2 })}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingSavings(account.id);
+                          setSavingsEditData({ name: account.name, balance: account.balance });
+                        }}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => setSavingsAccounts(savingsAccounts.filter((acc) => acc.id !== account.id))}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
@@ -1089,85 +1234,101 @@ const MyLedger = () => {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-800">Subscriptions</h3>
             <button
-              onClick={() => {
-                const newSub = {
-                  id: 'sub-' + Date.now(),
-                  name: 'New Subscription',
-                  amount: 0,
-                  day: 1,
-                  card: creditCards[0]?.id || '',
-                  status: 'Active',
-                };
-                setSubscriptions([...subscriptions, newSub]);
-              }}
-              className="bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600"
+              onClick={handleAddSubscription}
+              className="bg-purple-500 text-white px-3 py-1 rounded text-sm hover:bg-purple-600 flex items-center gap-1"
             >
-              <Plus size={16} className="inline mr-1" /> Add
+              <Plus size={16} /> Add
             </button>
           </div>
           <div className="space-y-3">
             {subscriptions.map((sub) => (
-              <div key={sub.id} className="bg-white p-4 rounded grid grid-cols-5 gap-2 items-center">
-                <input
-                  type="text"
-                  value={sub.name}
-                  onChange={(e) =>
-                    setSubscriptions(
-                      subscriptions.map((s) => (s.id === sub.id ? { ...s, name: e.target.value } : s))
-                    )
-                  }
-                  placeholder="Name"
-                  className="border border-gray-300 rounded px-2 py-1 text-sm"
-                />
-                <input
-                  type="number"
-                  value={sub.amount}
-                  onChange={(e) =>
-                    setSubscriptions(
-                      subscriptions.map((s) =>
-                        s.id === sub.id ? { ...s, amount: parseFloat(e.target.value) || 0 } : s
-                      )
-                    )
-                  }
-                  placeholder="Amount"
-                  className="border border-gray-300 rounded px-2 py-1 text-sm"
-                />
-                <input
-                  type="number"
-                  value={sub.day}
-                  onChange={(e) =>
-                    setSubscriptions(
-                      subscriptions.map((s) =>
-                        s.id === sub.id ? { ...s, day: parseInt(e.target.value) || 1 } : s
-                      )
-                    )
-                  }
-                  placeholder="Day"
-                  min="1"
-                  max="31"
-                  className="border border-gray-300 rounded px-2 py-1 text-sm"
-                />
-                <select
-                  value={sub.card}
-                  onChange={(e) =>
-                    setSubscriptions(
-                      subscriptions.map((s) => (s.id === sub.id ? { ...s, card: e.target.value } : s))
-                    )
-                  }
-                  className="border border-gray-300 rounded px-2 py-1 text-sm"
-                >
-                  {creditCards.map((card) => (
-                    <option key={card.id} value={card.id}>
-                      {card.name.substring(0, 20)}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => setSubscriptions(subscriptions.filter((s) => s.id !== sub.id))}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  <Trash2 size={16} />
-                </button>
+              <div key={sub.id} className="bg-white p-4 rounded border border-purple-100">
+                {editingSubscription === sub.id ? (
+                  <div className="grid grid-cols-5 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Name"
+                      value={subEditData.name || ''}
+                      onChange={(e) => setSubEditData({ ...subEditData, name: e.target.value })}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="Amount"
+                      value={subEditData.amount || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                          setSubEditData({ ...subEditData, amount: parseFloat(val) || 0 });
+                        }
+                      }}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Day"
+                      value={subEditData.day || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || /^\d{1,2}$/.test(val)) {
+                          setSubEditData({ ...subEditData, day: parseInt(val) || 1 });
+                        }
+                      }}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                    <select
+                      value={subEditData.card || ''}
+                      onChange={(e) => setSubEditData({ ...subEditData, card: e.target.value })}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    >
+                      {creditCards.map((card) => (
+                        <option key={card.id} value={card.id}>
+                          {card.name.substring(0, 15)}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={handleSaveSubscriptionEdit}
+                        className="bg-green-500 text-white px-2 py-1 rounded text-sm hover:bg-green-600 flex-1"
+                      >
+                        <Check size={14} />
+                      </button>
+                      <button
+                        onClick={() => setEditingSubscription(null)}
+                        className="bg-gray-500 text-white px-2 py-1 rounded text-sm hover:bg-gray-600 flex-1"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-800">{sub.name}</p>
+                      <p className="text-sm text-gray-600">₱{sub.amount} on day {sub.day}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingSubscription(sub.id);
+                          setSubEditData({ name: sub.name, amount: sub.amount, day: sub.day, card: sub.card });
+                        }}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => setSubscriptions(subscriptions.filter((s) => s.id !== sub.id))}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -1178,79 +1339,98 @@ const MyLedger = () => {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-800">Fixed Bills</h3>
             <button
-              onClick={() => {
-                const newBill = {
-                  id: 'bill-' + Date.now(),
-                  name: 'New Bill',
-                  amount: 0,
-                  day: 1,
-                  status: 'Active',
-                };
-                setFixedBills([...fixedBills, newBill]);
-              }}
-              className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
+              onClick={handleAddBill}
+              className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600 flex items-center gap-1"
             >
-              <Plus size={16} className="inline mr-1" /> Add
+              <Plus size={16} /> Add
             </button>
           </div>
           <div className="space-y-3">
             {fixedBills.map((bill) => (
-              <div key={bill.id} className="bg-white p-4 rounded grid grid-cols-5 gap-2 items-center">
-                <input
-                  type="text"
-                  value={bill.name}
-                  onChange={(e) =>
-                    setFixedBills(
-                      fixedBills.map((b) => (b.id === bill.id ? { ...b, name: e.target.value } : b))
-                    )
-                  }
-                  placeholder="Name"
-                  className="border border-gray-300 rounded px-2 py-1 text-sm"
-                />
-                <input
-                  type="number"
-                  value={bill.amount}
-                  onChange={(e) =>
-                    setFixedBills(
-                      fixedBills.map((b) =>
-                        b.id === bill.id ? { ...b, amount: parseFloat(e.target.value) || 0 } : b
-                      )
-                    )
-                  }
-                  placeholder="Amount"
-                  className="border border-gray-300 rounded px-2 py-1 text-sm"
-                />
-                <input
-                  type="number"
-                  value={bill.day}
-                  onChange={(e) =>
-                    setFixedBills(
-                      fixedBills.map((b) => (b.id === bill.id ? { ...b, day: parseInt(e.target.value) || 1 } : b))
-                    )
-                  }
-                  placeholder="Day"
-                  min="1"
-                  max="31"
-                  className="border border-gray-300 rounded px-2 py-1 text-sm"
-                />
-                <select
-                  value={bill.status}
-                  onChange={(e) =>
-                    setFixedBills(
-                      fixedBills.map((b) => (b.id === bill.id ? { ...b, status: e.target.value } : b))
-                    )
-                  }
-                  className="border border-gray-300 rounded px-2 py-1 text-sm"
-                >
-                  <option>Active</option>
-                  <option>Inactive</option>
-                </select>
-                <button
-                  onClick={() => setFixedBills(fixedBills.filter((b) => b.id !== bill.id))}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  <Trash2 size={16} />
-                </button>
+              <div key={bill.id} className="bg-white p-4 rounded border border-red-100">
+                {editingBill === bill.id ? (
+                  <div className="grid grid-cols-5 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Name"
+                      value={billEditData.name || ''}
+                      onChange={(e) => setBillEditData({ ...billEditData, name: e.target.value })}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="Amount"
+                      value={billEditData.amount || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                          setBillEditData({ ...billEditData, amount: parseFloat(val) || 0 });
+                        }
+                      }}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Day"
+                      value={billEditData.day || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || /^\d{1,2}$/.test(val)) {
+                          setBillEditData({ ...billEditData, day: parseInt(val) || 1 });
+                        }
+                      }}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                    <select
+                      value={billEditData.status || 'Active'}
+                      onChange={(e) => setBillEditData({ ...billEditData, status: e.target.value })}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    >
+                      <option>Active</option>
+                      <option>Inactive</option>
+                    </select>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={handleSaveBillEdit}
+                        className="bg-green-500 text-white px-2 py-1 rounded text-sm hover:bg-green-600 flex-1"
+                      >
+                        <Check size={14} />
+                      </button>
+                      <button
+                        onClick={() => setEditingBill(null)}
+                        className="bg-gray-500 text-white px-2 py-1 rounded text-sm hover:bg-gray-600 flex-1"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-800">{bill.name}</p>
+                      <p className="text-sm text-gray-600">₱{bill.amount} on day {bill.day}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setEditingBill(bill.id);
+                          setBillEditData({ name: bill.name, amount: bill.amount, day: bill.day, status: bill.status });
+                        }}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => setFixedBills(fixedBills.filter((b) => b.id !== bill.id))}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -1284,7 +1464,7 @@ const MyLedger = () => {
                         )
                       }
                     />
-                    <span>Paid this month</span>
+                    <span>Paid this month (reset manually)</span>
                   </label>
                 </div>
               </div>
@@ -1297,7 +1477,44 @@ const MyLedger = () => {
 
   // Credit Cards Tab
   const CreditCardsTab = () => {
+    const [editingCard, setEditingCard] = useState(null);
+    const [cardEditData, setCardEditData] = useState({});
+    const [logPaymentCard, setLogPaymentCard] = useState(null);
+    const [logPaymentData, setLogPaymentData] = useState({ amount: '', date: '' });
+
     const suggestedPayments = calculateSuggestedPayments();
+
+    const handleSaveCardEdit = () => {
+      setCreditCards(
+        creditCards.map((c) =>
+          c.id === editingCard ? { ...c, ...cardEditData } : c
+        )
+      );
+      setEditingCard(null);
+    };
+
+    const handleLogPayment = () => {
+      const amount = parseFloat(logPaymentData.amount) || 0;
+      const date = logPaymentData.date;
+      if (amount && date) {
+        setCreditCards(
+          creditCards.map((c) =>
+            c.id === logPaymentCard
+              ? {
+                  ...c,
+                  balance: Math.max(0, c.balance - amount),
+                  paymentHistory: [
+                    ...(c.paymentHistory || []),
+                    { date, amount },
+                  ],
+                }
+              : c
+          )
+        );
+        setLogPaymentCard(null);
+        setLogPaymentData({ amount: '', date: '' });
+      }
+    };
 
     return (
       <div className="space-y-4">
@@ -1307,178 +1524,255 @@ const MyLedger = () => {
             const projectedBalance = calculateCardForecast(card, new Date());
             const nextStatementDate = new Date();
             nextStatementDate.setDate(nextStatementDate.getDate() + daysToStatement);
+            const estimatedNextStatement = card.balance + (card.balance * (card.rate / 100 / 30) * daysToStatement);
 
             return (
               <div
                 key={card.id}
                 className="bg-gradient-to-br from-pink-50 to-blue-50 border border-pink-200 rounded-lg p-6 shadow"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-bold text-gray-800">{card.name}</h3>
-                  <CreditCard className="text-pink-600" />
-                </div>
-
-                <div className="space-y-3 text-sm">
-                  <div>
-                    <label className="block text-gray-600 mb-1">Current Balance</label>
+                {editingCard === card.id ? (
+                  <div className="space-y-3 text-sm">
                     <input
-                      type="number"
-                      value={card.balance}
-                      onChange={(e) =>
-                        setCreditCards(
-                          creditCards.map((c) =>
-                            c.id === card.id ? { ...c, balance: parseFloat(e.target.value) || 0 } : c
-                          )
-                        )
-                      }
+                      type="text"
+                      placeholder="Card Name"
+                      value={cardEditData.name || ''}
+                      onChange={(e) => setCardEditData({ ...cardEditData, name: e.target.value })}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
+
+                    <input
+                      type="text"
+                      inputMode="decimal"
                       placeholder="Balance (₱)"
+                      value={cardEditData.balance || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                          setCardEditData({ ...cardEditData, balance: parseFloat(val) || 0 });
+                        }
+                      }}
                       className="w-full border border-gray-300 rounded px-3 py-2"
                     />
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-gray-600 mb-1">Monthly Rate (%)</label>
+                    <div className="grid grid-cols-2 gap-2">
                       <input
-                        type="number"
-                        value={card.rate}
-                        onChange={(e) =>
-                          setCreditCards(
-                            creditCards.map((c) =>
-                              c.id === card.id ? { ...c, rate: parseFloat(e.target.value) || 0 } : c
-                            )
-                          )
-                        }
+                        type="text"
+                        inputMode="decimal"
                         placeholder="Monthly Rate (%)"
+                        value={cardEditData.rate || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                            setCardEditData({ ...cardEditData, rate: parseFloat(val) || 0 });
+                          }
+                        }}
                         className="w-full border border-gray-300 rounded px-3 py-2"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-gray-600 mb-1">Credit Limit (₱)</label>
                       <input
-                        type="number"
-                        value={card.limit}
-                        onChange={(e) =>
-                          setCreditCards(
-                            creditCards.map((c) =>
-                              c.id === card.id ? { ...c, limit: parseFloat(e.target.value) || 0 } : c
-                            )
-                          )
-                        }
+                        type="text"
+                        inputMode="decimal"
                         placeholder="Credit Limit (₱)"
+                        value={cardEditData.limit || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                            setCardEditData({ ...cardEditData, limit: parseFloat(val) || 0 });
+                          }
+                        }}
                         className="w-full border border-gray-300 rounded px-3 py-2"
                       />
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-gray-600 mb-1">Min Payment (₱)</label>
+                    <div className="grid grid-cols-2 gap-2">
                       <input
-                        type="number"
-                        value={card.minPayment}
-                        onChange={(e) =>
-                          setCreditCards(
-                            creditCards.map((c) =>
-                              c.id === card.id ? { ...c, minPayment: parseFloat(e.target.value) || 0 } : c
-                            )
-                          )
-                        }
+                        type="text"
+                        inputMode="decimal"
                         placeholder="Min Payment (₱)"
+                        value={cardEditData.minPayment || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                            setCardEditData({ ...cardEditData, minPayment: parseFloat(val) || 0 });
+                          }
+                        }}
                         className="w-full border border-gray-300 rounded px-3 py-2"
                       />
-                    </div>
-                    <div>
-                      <label className="block text-gray-600 mb-1">Statement Day</label>
                       <input
-                        type="number"
-                        value={card.statementDay}
-                        onChange={(e) =>
-                          setCreditCards(
-                            creditCards.map((c) =>
-                              c.id === card.id ? { ...c, statementDay: parseInt(e.target.value) || 1 } : c
-                            )
-                          )
-                        }
+                        type="text"
+                        inputMode="numeric"
                         placeholder="Statement Day"
-                        min="1"
-                        max="31"
+                        value={cardEditData.statementDay || ''}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '' || /^\d{1,2}$/.test(val)) {
+                            setCardEditData({ ...cardEditData, statementDay: parseInt(val) || 1 });
+                          }
+                        }}
                         className="w-full border border-gray-300 rounded px-3 py-2"
                       />
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-gray-600 mb-1">Days to Due</label>
                     <input
-                      type="number"
-                      value={card.daysTodue}
-                      onChange={(e) =>
-                        setCreditCards(
-                          creditCards.map((c) =>
-                            c.id === card.id ? { ...c, daysTodue: parseInt(e.target.value) || 0 } : c
-                          )
-                        )
-                      }
+                      type="text"
+                      inputMode="numeric"
                       placeholder="Days to Due"
+                      value={cardEditData.daysTodue || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || /^\d*$/.test(val)) {
+                          setCardEditData({ ...cardEditData, daysTodue: parseInt(val) || 0 });
+                        }
+                      }}
                       className="w-full border border-gray-300 rounded px-3 py-2"
                     />
-                  </div>
 
-                  <div className="bg-white p-3 rounded border border-purple-200">
-                    <p className="text-gray-600">Suggested Payment (Avalanche)</p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      ₱{(suggestedPayments[card.id] || card.minPayment).toFixed(2)}
-                    </p>
-                  </div>
-
-                  <div className="bg-white p-3 rounded border border-blue-200">
-                    <p className="text-gray-600">Projected Balance on {nextStatementDate.toLocaleDateString()}</p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      ₱{projectedBalance.toLocaleString('en-PH', { maximumFractionDigits: 2 })}
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      const amount = prompt('Payment amount:');
-                      const date = prompt('Payment date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
-                      if (amount && date) {
-                        setCreditCards(
-                          creditCards.map((c) =>
-                            c.id === card.id
-                              ? {
-                                  ...c,
-                                  balance: Math.max(0, c.balance - parseFloat(amount)),
-                                  paymentHistory: [
-                                    ...(c.paymentHistory || []),
-                                    { date, amount: parseFloat(amount) },
-                                  ],
-                                }
-                              : c
-                          )
-                        );
-                      }
-                    }}
-                    className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 font-semibold"
-                  >
-                    Log Payment
-                  </button>
-
-                  {card.paymentHistory && card.paymentHistory.length > 0 && (
-                    <div className="bg-white p-3 rounded">
-                      <p className="font-semibold text-gray-800 mb-2">Payment History</p>
-                      <div className="space-y-1 max-h-32 overflow-y-auto">
-                        {card.paymentHistory.map((payment, idx) => (
-                          <div key={idx} className="text-sm text-gray-600 flex justify-between">
-                            <span>{payment.date}</span>
-                            <span className="font-semibold">₱{payment.amount.toFixed(2)}</span>
-                          </div>
-                        ))}
-                      </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleSaveCardEdit}
+                        className="flex-1 bg-green-500 text-white py-2 rounded hover:bg-green-600 font-semibold text-sm"
+                      >
+                        <Check size={16} className="inline mr-1" /> Save
+                      </button>
+                      <button
+                        onClick={() => setEditingCard(null)}
+                        className="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600 font-semibold text-sm"
+                      >
+                        Cancel
+                      </button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-bold text-gray-800">{card.name}</h3>
+                      <CreditCard className="text-pink-600" />
+                    </div>
+
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <label className="block text-gray-600 mb-1">Current Balance</label>
+                        <p className="text-2xl font-bold text-gray-800">₱{card.balance.toLocaleString('en-PH', { maximumFractionDigits: 2 })}</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p className="text-gray-600">Monthly Rate</p>
+                          <p className="font-semibold">{card.rate}%</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">Credit Limit</p>
+                          <p className="font-semibold">₱{card.limit.toLocaleString('en-PH')}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p className="text-gray-600">Min Payment</p>
+                          <p className="font-semibold">₱{card.minPayment.toFixed(2)}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">Statement Day</p>
+                          <p className="font-semibold">{card.statementDay}</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-3 rounded border border-purple-200">
+                        <p className="text-gray-600 text-xs">Suggested Payment (Avalanche)</p>
+                        <p className="text-2xl font-bold text-purple-600">
+                          ₱{(suggestedPayments[card.id] || card.minPayment).toFixed(2)}
+                        </p>
+                      </div>
+
+                      <div className="bg-white p-3 rounded border border-blue-200">
+                        <p className="text-gray-600 text-xs">Estimated next statement</p>
+                        <p className="text-lg font-bold text-blue-600">
+                          ₱{estimatedNextStatement.toLocaleString('en-PH', { maximumFractionDigits: 2 })}
+                        </p>
+                      </div>
+
+                      {logPaymentCard === card.id ? (
+                        <div className="bg-white p-3 rounded border border-green-200 space-y-2">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="Payment amount"
+                            value={logPaymentData.amount}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                                setLogPaymentData({ ...logPaymentData, amount: val });
+                              }
+                            }}
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                          />
+                          <input
+                            type="date"
+                            value={logPaymentData.date}
+                            onChange={(e) => setLogPaymentData({ ...logPaymentData, date: e.target.value })}
+                            className="w-full border border-gray-300 rounded px-2 py-1 text-sm"
+                          />
+                          <div className="flex gap-1">
+                            <button
+                              onClick={handleLogPayment}
+                              className="flex-1 bg-green-500 text-white py-1 rounded text-sm hover:bg-green-600"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => {
+                                setLogPaymentCard(null);
+                                setLogPaymentData({ amount: '', date: '' });
+                              }}
+                              className="flex-1 bg-gray-400 text-white py-1 rounded text-sm hover:bg-gray-500"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setLogPaymentCard(card.id)}
+                          className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 font-semibold text-sm"
+                        >
+                          Log Payment
+                        </button>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          setEditingCard(card.id);
+                          setCardEditData({
+                            name: card.name,
+                            balance: card.balance,
+                            rate: card.rate,
+                            limit: card.limit,
+                            minPayment: card.minPayment,
+                            statementDay: card.statementDay,
+                            daysTodue: card.daysTodue,
+                          });
+                        }}
+                        className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 font-semibold text-sm"
+                      >
+                        <Edit2 size={16} className="inline mr-1" /> Edit
+                      </button>
+
+                      {card.paymentHistory && card.paymentHistory.length > 0 && (
+                        <div className="bg-white p-3 rounded">
+                          <p className="font-semibold text-gray-800 mb-2 text-xs">Payment History</p>
+                          <div className="space-y-1 max-h-32 overflow-y-auto">
+                            {card.paymentHistory.map((payment, idx) => (
+                              <div key={idx} className="text-xs text-gray-600 flex justify-between">
+                                <span>{payment.date}</span>
+                                <span className="font-semibold">₱{payment.amount.toFixed(2)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -1489,8 +1783,16 @@ const MyLedger = () => {
 
   // Grocery Tab
   const GroceryTab = () => {
-    const [expandedCategory, setExpandedCategory] = useState('VITAMINS');
+    const [activeGroceryCategory, setActiveGroceryCategory] = useState('VITAMINS');
     const [editingItem, setEditingItem] = useState(null);
+    const [itemEditData, setItemEditData] = useState({});
+    const [showAddItemForm, setShowAddItemForm] = useState(false);
+    const [newItemData, setNewItemData] = useState({
+      name: '',
+      price: '',
+      frequencyDays: '',
+      category: 'VITAMINS',
+    });
 
     const groupedItems = useMemo(() => {
       return groceryItems.reduce((acc, item) => {
@@ -1518,179 +1820,236 @@ const MyLedger = () => {
       return daysLeft > 0 ? `${daysLeft} days` : 'Due now!';
     };
 
+    const handleSaveItemEdit = () => {
+      setGroceryItems(
+        groceryItems.map((item) =>
+          item.id === editingItem ? { ...item, ...itemEditData } : item
+        )
+      );
+      setEditingItem(null);
+    };
+
+    const handleAddItem = () => {
+      if (newItemData.name && newItemData.price && newItemData.frequencyDays) {
+        setGroceryItems([
+          ...groceryItems,
+          {
+            id: 'item-' + Date.now(),
+            category: newItemData.category,
+            name: newItemData.name,
+            price: parseFloat(newItemData.price),
+            frequencyDays: parseInt(newItemData.frequencyDays),
+            lastPurchased: null,
+            card: 'bpi-gold',
+          },
+        ]);
+        setNewItemData({ name: '', price: '', frequencyDays: '', category: 'VITAMINS' });
+        setShowAddItemForm(false);
+      }
+    };
+
     return (
       <div className="space-y-4">
-        {Object.entries(groupedItems).map(([category, items]) => (
-          <div key={category} className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-lg shadow">
+        {/* Category Tabs */}
+        <div className="flex gap-2 flex-wrap">
+          {Object.keys(groupedItems).map((category) => (
             <button
-              onClick={() => setExpandedCategory(expandedCategory === category ? null : category)}
-              className="w-full p-4 flex items-center justify-between hover:bg-white hover:bg-opacity-50 transition"
+              key={category}
+              onClick={() => setActiveGroceryCategory(category)}
+              className={`px-4 py-2 rounded font-semibold transition ${
+                activeGroceryCategory === category
+                  ? 'bg-pink-600 text-white'
+                  : 'bg-pink-100 text-pink-800 hover:bg-pink-200'
+              }`}
             >
-              <h3 className="text-lg font-bold text-gray-800">{category}</h3>
-              <ChevronDown
-                size={20}
-                className={`text-pink-600 transition ${expandedCategory === category ? 'rotate-180' : ''}`}
-              />
+              {category}
             </button>
+          ))}
+        </div>
 
-            {expandedCategory === category && (
-              <div className="p-4 border-t border-pink-200 space-y-3">
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-white p-4 rounded border border-pink-200 flex items-center justify-between"
-                  >
-                    {editingItem === item.id ? (
-                      <div className="flex-1 grid grid-cols-5 gap-2">
-                        <input
-                          type="text"
-                          value={item.name}
-                          onChange={(e) =>
-                            setGroceryItems(
-                              groceryItems.map((it) =>
-                                it.id === item.id ? { ...it, name: e.target.value } : it
-                              )
-                            )
-                          }
-                          placeholder="Name"
-                          className="border border-gray-300 rounded px-2 py-1 text-sm"
-                        />
-                        <input
-                          type="number"
-                          value={item.price}
-                          onChange={(e) =>
-                            setGroceryItems(
-                              groceryItems.map((it) =>
-                                it.id === item.id ? { ...it, price: parseFloat(e.target.value) || 0 } : it
-                              )
-                            )
-                          }
-                          placeholder="Price"
-                          className="border border-gray-300 rounded px-2 py-1 text-sm"
-                        />
-                        <input
-                          type="number"
-                          value={item.frequencyDays}
-                          onChange={(e) =>
-                            setGroceryItems(
-                              groceryItems.map((it) =>
-                                it.id === item.id ? { ...it, frequencyDays: parseInt(e.target.value) || 30 } : it
-                              )
-                            )
-                          }
-                          placeholder="Days"
-                          className="border border-gray-300 rounded px-2 py-1 text-sm"
-                        />
-                        <input
-                          type="date"
-                          value={item.lastPurchased || ''}
-                          onChange={(e) =>
-                            setGroceryItems(
-                              groceryItems.map((it) =>
-                                it.id === item.id ? { ...it, lastPurchased: e.target.value } : it
-                              )
-                            )
-                          }
-                          className="border border-gray-300 rounded px-2 py-1 text-sm"
-                        />
-                        <button
-                          onClick={() => setEditingItem(null)}
-                          className="text-green-600 hover:text-green-800"
-                        >
-                          <Check size={16} />
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex-1">
-                          <h4 className="font-semibold text-gray-800">{item.name}</h4>
-                          <p className="text-sm text-gray-600">
-                            ₱{item.price.toFixed(2)} • Every {item.frequencyDays} days • {calculateDaysUntilReplenish(item)}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleMarkPurchased(item.id)}
-                          className="bg-green-500 text-white px-4 py-2 rounded text-sm hover:bg-green-600 mr-2"
-                        >
-                          Mark Purchased
-                        </button>
-                        <button
-                          onClick={() => setEditingItem(item.id)}
-                          className="text-blue-600 hover:text-blue-800 mr-2"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => setGroceryItems(groceryItems.filter((it) => it.id !== item.id))}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </>
-                    )}
+        {/* Items for active category */}
+        <div className="bg-gradient-to-br from-pink-50 to-purple-50 rounded-lg p-6 shadow">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">{activeGroceryCategory}</h3>
+          <div className="space-y-3">
+            {(groupedItems[activeGroceryCategory] || []).map((item) => (
+              <div
+                key={item.id}
+                className="bg-white p-4 rounded border border-pink-200"
+              >
+                {editingItem === item.id ? (
+                  <div className="grid grid-cols-5 gap-2">
+                    <input
+                      type="text"
+                      placeholder="Name"
+                      value={itemEditData.name || ''}
+                      onChange={(e) => setItemEditData({ ...itemEditData, name: e.target.value })}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="Price"
+                      value={itemEditData.price || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                          setItemEditData({ ...itemEditData, price: parseFloat(val) || 0 });
+                        }
+                      }}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      placeholder="Days"
+                      value={itemEditData.frequencyDays || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '' || /^\d*$/.test(val)) {
+                          setItemEditData({ ...itemEditData, frequencyDays: parseInt(val) || 30 });
+                        }
+                      }}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                    <input
+                      type="date"
+                      value={itemEditData.lastPurchased || ''}
+                      onChange={(e) => setItemEditData({ ...itemEditData, lastPurchased: e.target.value })}
+                      className="border border-gray-300 rounded px-2 py-1 text-sm"
+                    />
+                    <div className="flex gap-1">
+                      <button
+                        onClick={handleSaveItemEdit}
+                        className="bg-green-500 text-white px-2 py-1 rounded text-sm hover:bg-green-600 flex-1"
+                      >
+                        <Check size={14} />
+                      </button>
+                      <button
+                        onClick={() => setEditingItem(null)}
+                        className="bg-gray-500 text-white px-2 py-1 rounded text-sm hover:bg-gray-600 flex-1"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
                   </div>
-                ))}
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-800">{item.name}</h4>
+                      <p className="text-sm text-gray-600">
+                        ₱{item.price.toFixed(2)} • Every {item.frequencyDays} days • {calculateDaysUntilReplenish(item)}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleMarkPurchased(item.id)}
+                        className="bg-green-500 text-white px-3 py-1 rounded text-sm hover:bg-green-600"
+                      >
+                        Mark Purchased
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditingItem(item.id);
+                          setItemEditData({
+                            name: item.name,
+                            price: item.price,
+                            frequencyDays: item.frequencyDays,
+                            lastPurchased: item.lastPurchased,
+                          });
+                        }}
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button
+                        onClick={() => setGroceryItems(groceryItems.filter((it) => it.id !== item.id))}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            ))}
           </div>
-        ))}
+        </div>
 
         {/* Add Item Form */}
-        <div className="bg-gradient-to-r from-pink-100 to-purple-100 rounded-lg p-6 shadow">
-          <h3 className="text-lg font-bold text-gray-800 mb-4">Add Item</h3>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target);
-              const newItem = {
-                id: 'item-' + Date.now(),
-                category: formData.get('category') || 'VITAMINS',
-                name: formData.get('name') || '',
-                price: parseFloat(formData.get('price')) || 0,
-                frequencyDays: parseInt(formData.get('frequencyDays')) || 30,
-                lastPurchased: null,
-                card: formData.get('card') || creditCards[0]?.id || '',
-              };
-              if (newItem.name) {
-                setGroceryItems([...groceryItems, newItem]);
-                e.target.reset();
-              }
-            }}
-            className="grid grid-cols-1 md:grid-cols-5 gap-3"
-          >
-            <select name="category" className="border border-gray-300 rounded px-3 py-2" defaultValue="VITAMINS">
-              <option>VITAMINS</option>
-              <option>SKINCARE</option>
-              <option>TOILETRIES</option>
-              <option>HOUSEHOLD</option>
-            </select>
-            <input
-              type="text"
-              name="name"
-              placeholder="Item name"
-              className="border border-gray-300 rounded px-3 py-2"
-              required
-            />
-            <input
-              type="number"
-              name="price"
-              placeholder="Price"
-              step="0.01"
-              className="border border-gray-300 rounded px-3 py-2"
-              required
-            />
-            <input
-              type="number"
-              name="frequencyDays"
-              placeholder="Frequency (days)"
-              className="border border-gray-300 rounded px-3 py-2"
-              required
-            />
-            <button type="submit" className="bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600 font-semibold">
-              Add Item
-            </button>
-          </form>
-        </div>
+        <button
+          onClick={() => setShowAddItemForm(!showAddItemForm)}
+          className="bg-pink-500 text-white px-6 py-2 rounded hover:bg-pink-600 font-semibold flex items-center gap-2"
+        >
+          <Plus size={20} /> Add Item
+        </button>
+
+        {showAddItemForm && (
+          <div className="bg-gradient-to-r from-pink-100 to-purple-100 rounded-lg p-6 shadow border border-pink-200">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">New Item</h3>
+            <div className="space-y-3">
+              <select
+                value={newItemData.category}
+                onChange={(e) => setNewItemData({ ...newItemData, category: e.target.value })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              >
+                <option>VITAMINS</option>
+                <option>SKINCARE</option>
+                <option>TOILETRIES</option>
+                <option>HOUSEHOLD</option>
+              </select>
+              <input
+                type="text"
+                placeholder="Item name"
+                value={newItemData.name}
+                onChange={(e) => setNewItemData({ ...newItemData, name: e.target.value })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              />
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="Price"
+                value={newItemData.price}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                    setNewItemData({ ...newItemData, price: val });
+                  }
+                }}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              />
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Frequency (days)"
+                value={newItemData.frequencyDays}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || /^\d*$/.test(val)) {
+                    setNewItemData({ ...newItemData, frequencyDays: val });
+                  }
+                }}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={handleAddItem}
+                  className="flex-1 bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600 font-semibold"
+                >
+                  Add Item
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAddItemForm(false);
+                    setNewItemData({ name: '', price: '', frequencyDays: '', category: 'VITAMINS' });
+                  }}
+                  className="flex-1 bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -1698,6 +2057,15 @@ const MyLedger = () => {
   // Purchases Tab
   const PurchasesTab = () => {
     const [filterCategory, setFilterCategory] = useState('All');
+    const [newPurchaseData, setNewPurchaseData] = useState({
+      description: '',
+      amount: '',
+      category: 'Groceries',
+      card: creditCards[0]?.id || 'cash',
+      date: new Date().toISOString().split('T')[0],
+      isNecessity: false,
+      necessityItemId: '',
+    });
 
     const categories = useMemo(() => {
       const cats = new Set(purchases.map((p) => p.category));
@@ -1707,17 +2075,37 @@ const MyLedger = () => {
     const filteredPurchases = filterCategory === 'All' ? purchases : purchases.filter((p) => p.category === filterCategory);
 
     const handleAddPurchase = () => {
-      const newPurchase = {
-        id: 'purchase-' + Date.now(),
-        description: '',
-        amount: 0,
-        category: 'Other',
-        card: creditCards[0]?.id || '',
-        isNecessity: false,
-        date: new Date().toISOString().split('T')[0],
-        notes: '',
-      };
-      setPurchases([...purchases, newPurchase]);
+      if (newPurchaseData.description && newPurchaseData.amount) {
+        const newPurchase = {
+          id: 'purchase-' + Date.now(),
+          description: newPurchaseData.description,
+          amount: parseFloat(newPurchaseData.amount),
+          category: newPurchaseData.category,
+          card: newPurchaseData.card,
+          date: newPurchaseData.date,
+          isNecessity: newPurchaseData.isNecessity,
+          necessityItemId: newPurchaseData.necessityItemId,
+        };
+        setPurchases([...purchases, newPurchase]);
+        if (newPurchaseData.isNecessity && newPurchaseData.necessityItemId) {
+          setGroceryItems(
+            groceryItems.map((item) =>
+              item.id === newPurchaseData.necessityItemId
+                ? { ...item, lastPurchased: newPurchaseData.date }
+                : item
+            )
+          );
+        }
+        setNewPurchaseData({
+          description: '',
+          amount: '',
+          category: 'Groceries',
+          card: creditCards[0]?.id || 'cash',
+          date: new Date().toISOString().split('T')[0],
+          isNecessity: false,
+          necessityItemId: '',
+        });
+      }
     };
 
     return (
@@ -1738,149 +2126,110 @@ const MyLedger = () => {
           ))}
         </div>
 
-        <button
-          onClick={handleAddPurchase}
-          className="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-6 py-2 rounded hover:from-pink-600 hover:to-purple-600 font-semibold flex items-center gap-2"
-        >
-          <Plus size={20} /> Add Purchase
-        </button>
+        {/* Add Purchase Form */}
+        <div className="bg-gradient-to-r from-pink-100 to-purple-100 rounded-lg p-6 shadow border border-pink-200">
+          <h3 className="text-lg font-bold text-gray-800 mb-4">Add Purchase</h3>
+          <div className="space-y-3">
+            <input
+              type="text"
+              placeholder="Description"
+              value={newPurchaseData.description}
+              onChange={(e) => setNewPurchaseData({ ...newPurchaseData, description: e.target.value })}
+              className="w-full border border-gray-300 rounded px-3 py-2"
+            />
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="Amount"
+              value={newPurchaseData.amount}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                  setNewPurchaseData({ ...newPurchaseData, amount: val });
+                }
+              }}
+              className="w-full border border-gray-300 rounded px-3 py-2"
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <select
+                value={newPurchaseData.category}
+                onChange={(e) => setNewPurchaseData({ ...newPurchaseData, category: e.target.value })}
+                className="border border-gray-300 rounded px-3 py-2"
+              >
+                <option>Groceries</option>
+                <option>Utilities</option>
+                <option>Entertainment</option>
+                <option>Transport</option>
+                <option>Health</option>
+                <option>Other</option>
+              </select>
+              <select
+                value={newPurchaseData.card}
+                onChange={(e) => setNewPurchaseData({ ...newPurchaseData, card: e.target.value })}
+                className="border border-gray-300 rounded px-3 py-2"
+              >
+                {creditCards.map((card) => (
+                  <option key={card.id} value={card.id}>
+                    {card.name.substring(0, 20)}
+                  </option>
+                ))}
+                <option value="cash">Cash</option>
+              </select>
+            </div>
+            <input
+              type="date"
+              value={newPurchaseData.date}
+              onChange={(e) => setNewPurchaseData({ ...newPurchaseData, date: e.target.value })}
+              className="w-full border border-gray-300 rounded px-3 py-2"
+            />
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={newPurchaseData.isNecessity}
+                onChange={(e) => setNewPurchaseData({ ...newPurchaseData, isNecessity: e.target.checked })}
+              />
+              <span>Is Necessity/Recurring</span>
+            </label>
+            {newPurchaseData.isNecessity && (
+              <select
+                value={newPurchaseData.necessityItemId}
+                onChange={(e) => setNewPurchaseData({ ...newPurchaseData, necessityItemId: e.target.value })}
+                className="w-full border border-gray-300 rounded px-3 py-2"
+              >
+                <option value="">Link to grocery item...</option>
+                {groceryItems.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            )}
+            <button
+              onClick={handleAddPurchase}
+              className="w-full bg-pink-500 text-white px-4 py-2 rounded hover:bg-pink-600 font-semibold"
+            >
+              Add Purchase
+            </button>
+          </div>
+        </div>
 
+        {/* Purchases List */}
         <div className="space-y-3">
           {filteredPurchases.map((purchase) => (
             <div key={purchase.id} className="bg-gradient-to-r from-pink-50 to-blue-50 p-4 rounded border border-pink-200">
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                <input
-                  type="text"
-                  value={purchase.description}
-                  onChange={(e) =>
-                    setPurchases(
-                      purchases.map((p) =>
-                        p.id === purchase.id ? { ...p, description: e.target.value } : p
-                      )
-                    )
-                  }
-                  placeholder="Description"
-                  className="border border-gray-300 rounded px-3 py-2"
-                />
-                <input
-                  type="number"
-                  value={purchase.amount}
-                  onChange={(e) =>
-                    setPurchases(
-                      purchases.map((p) =>
-                        p.id === purchase.id ? { ...p, amount: parseFloat(e.target.value) || 0 } : p
-                      )
-                    )
-                  }
-                  placeholder="Amount"
-                  step="0.01"
-                  className="border border-gray-300 rounded px-3 py-2"
-                />
-                <select
-                  value={purchase.category}
-                  onChange={(e) =>
-                    setPurchases(
-                      purchases.map((p) =>
-                        p.id === purchase.id ? { ...p, category: e.target.value } : p
-                      )
-                    )
-                  }
-                  className="border border-gray-300 rounded px-3 py-2"
-                >
-                  <option>Groceries</option>
-                  <option>Utilities</option>
-                  <option>Entertainment</option>
-                  <option>Transport</option>
-                  <option>Health</option>
-                  <option>Other</option>
-                </select>
-                {purchase.category === 'Other' && (
-                  <input
-                    type="text"
-                    value={purchase.customCategory || ''}
-                    onChange={(e) =>
-                      setPurchases(
-                        purchases.map((p) =>
-                          p.id === purchase.id ? { ...p, customCategory: e.target.value } : p
-                        )
-                      )
-                    }
-                    placeholder="Custom category"
-                    className="border border-gray-300 rounded px-3 py-2"
-                  />
-                )}
-                <select
-                  value={purchase.card}
-                  onChange={(e) =>
-                    setPurchases(
-                      purchases.map((p) =>
-                        p.id === purchase.id ? { ...p, card: e.target.value } : p
-                      )
-                    )
-                  }
-                  className="border border-gray-300 rounded px-3 py-2"
-                >
-                  {creditCards.map((card) => (
-                    <option key={card.id} value={card.id}>
-                      {card.name.substring(0, 15)}
-                    </option>
-                  ))}
-                  <option value="cash">Cash</option>
-                </select>
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-800">{purchase.description}</p>
+                  <p className="text-sm text-gray-600">
+                    ₱{purchase.amount.toFixed(2)} • {purchase.category} • {purchase.date}
+                  </p>
+                </div>
                 <button
                   onClick={() => setPurchases(purchases.filter((p) => p.id !== purchase.id))}
                   className="text-red-600 hover:text-red-800"
                 >
                   <Trash2 size={16} />
                 </button>
-              </div>
-              <div className="mt-3 flex items-center gap-2">
-                <input
-                  type="date"
-                  value={purchase.date}
-                  onChange={(e) =>
-                    setPurchases(
-                      purchases.map((p) =>
-                        p.id === purchase.id ? { ...p, date: e.target.value } : p
-                      )
-                    )
-                  }
-                  className="border border-gray-300 rounded px-3 py-2 text-sm"
-                />
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={purchase.isNecessity}
-                    onChange={(e) =>
-                      setPurchases(
-                        purchases.map((p) =>
-                          p.id === purchase.id ? { ...p, isNecessity: e.target.checked } : p
-                        )
-                      )
-                    }
-                  />
-                  <span className="text-sm text-gray-700">Is Necessity/Recurring</span>
-                </label>
-                {purchase.isNecessity && (
-                  <select
-                    value={purchase.linkedGrocery || ''}
-                    onChange={(e) =>
-                      setPurchases(
-                        purchases.map((p) =>
-                          p.id === purchase.id ? { ...p, linkedGrocery: e.target.value } : p
-                        )
-                      )
-                    }
-                    className="border border-gray-300 rounded px-2 py-1 text-sm"
-                  >
-                    <option value="">Link to grocery item...</option>
-                    {groceryItems.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </select>
-                )}
               </div>
             </div>
           ))}
@@ -1891,273 +2240,422 @@ const MyLedger = () => {
 
   // Travel Tab
   const TravelTab = () => {
-    const [showAddTripForm, setShowAddTripForm] = useState(false);
-    const [showAddExpenseForm, setShowAddExpenseForm] = useState(false);
-    const [selectedTrip, setSelectedTrip] = useState(null);
+    const [showTripForm, setShowTripForm] = useState(false);
+    const [showExpenseForm, setShowExpenseForm] = useState(null);
+    const [tripFormData, setTripFormData] = useState({
+      name: '',
+      destination: '',
+      startDate: '',
+      endDate: '',
+      notes: '',
+    });
+    const [expenseFormData, setExpenseFormData] = useState({
+      description: '',
+      amount: '',
+      category: 'Flight',
+      card: creditCards[0]?.id || 'cash',
+      date: new Date().toISOString().split('T')[0],
+      paid: false,
+      notes: '',
+    });
 
-    const handleAddTrip = (e) => {
-      e.preventDefault();
-      const formData = new FormData(e.target);
-      const newTrip = {
-        id: 'trip-' + Date.now(),
-        name: formData.get('name') || '',
-        destination: formData.get('destination') || '',
-        startDate: formData.get('startDate') || '',
-        endDate: formData.get('endDate') || '',
-        notes: formData.get('notes') || '',
-        expenses: [],
-      };
-      setTrips([...trips, newTrip]);
-      setShowAddTripForm(false);
-      e.target.reset();
+    const [editingTrip, setEditingTrip] = useState(null);
+    const [tripEditData, setTripEditData] = useState({});
+
+    const handleAddTrip = () => {
+      if (tripFormData.name && tripFormData.destination && tripFormData.startDate && tripFormData.endDate) {
+        const newTrip = {
+          id: 'trip-' + Date.now(),
+          name: tripFormData.name,
+          destination: tripFormData.destination,
+          startDate: tripFormData.startDate,
+          endDate: tripFormData.endDate,
+          notes: tripFormData.notes,
+          expenses: [],
+        };
+        setTrips([...trips, newTrip]);
+        setTripFormData({
+          name: '',
+          destination: '',
+          startDate: '',
+          endDate: '',
+          notes: '',
+        });
+        setShowTripForm(false);
+      }
     };
 
-    const handleAddExpense = (e) => {
-      e.preventDefault();
-      if (!selectedTrip) return;
-      const formData = new FormData(e.target);
-      const newExpense = {
-        id: 'exp-' + Date.now(),
-        description: formData.get('description') || '',
-        amount: parseFloat(formData.get('amount')) || 0,
-        category: formData.get('category') || 'Other',
-        card: formData.get('card') || creditCards[0]?.id || '',
-        paid: formData.get('paid') === 'on',
-        date: formData.get('date') || '',
-        notes: formData.get('notes') || '',
-      };
+    const handleAddExpense = (tripId) => {
+      if (expenseFormData.description && expenseFormData.amount) {
+        const newExpense = {
+          id: 'exp-' + Date.now(),
+          description: expenseFormData.description,
+          amount: parseFloat(expenseFormData.amount),
+          category: expenseFormData.category,
+          card: expenseFormData.card,
+          date: expenseFormData.date,
+          paid: expenseFormData.paid,
+          notes: expenseFormData.notes,
+        };
+        setTrips(
+          trips.map((trip) =>
+            trip.id === tripId
+              ? { ...trip, expenses: [...trip.expenses, newExpense] }
+              : trip
+          )
+        );
+        if (expenseFormData.card !== 'cash') {
+          setCreditCards(
+            creditCards.map((card) =>
+              card.id === expenseFormData.card
+                ? { ...card, balance: card.balance + parseFloat(expenseFormData.amount) }
+                : card
+            )
+          );
+        }
+        setExpenseFormData({
+          description: '',
+          amount: '',
+          category: 'Flight',
+          card: creditCards[0]?.id || 'cash',
+          date: new Date().toISOString().split('T')[0],
+          paid: false,
+          notes: '',
+        });
+        setShowExpenseForm(null);
+      }
+    };
 
+    const handleSaveTripEdit = (tripId) => {
       setTrips(
         trips.map((trip) =>
-          trip.id === selectedTrip
-            ? { ...trip, expenses: [...trip.expenses, newExpense] }
-            : trip
+          trip.id === tripId ? { ...trip, ...tripEditData } : trip
         )
       );
-      setShowAddExpenseForm(false);
-      e.target.reset();
+      setEditingTrip(null);
     };
 
     return (
       <div className="space-y-4">
         <button
-          onClick={() => setShowAddTripForm(!showAddTripForm)}
+          onClick={() => setShowTripForm(!showTripForm)}
           className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white px-6 py-2 rounded hover:from-teal-600 hover:to-cyan-600 font-semibold flex items-center gap-2"
         >
           <Plus size={20} /> Add Trip
         </button>
 
-        {showAddTripForm && (
+        {showTripForm && (
           <div className="bg-gradient-to-r from-teal-50 to-cyan-50 p-6 rounded border border-teal-200 shadow">
             <h3 className="text-lg font-bold text-gray-800 mb-4">New Trip</h3>
-            <form onSubmit={handleAddTrip} className="space-y-3">
+            <div className="space-y-3">
               <input
                 type="text"
-                name="name"
                 placeholder="Trip Name"
-                required
+                value={tripFormData.name}
+                onChange={(e) => setTripFormData({ ...tripFormData, name: e.target.value })}
                 className="w-full border border-gray-300 rounded px-3 py-2"
               />
               <input
                 type="text"
-                name="destination"
                 placeholder="Destination"
-                required
+                value={tripFormData.destination}
+                onChange={(e) => setTripFormData({ ...tripFormData, destination: e.target.value })}
                 className="w-full border border-gray-300 rounded px-3 py-2"
               />
               <div className="grid grid-cols-2 gap-2">
                 <input
                   type="date"
-                  name="startDate"
-                  required
+                  value={tripFormData.startDate}
+                  onChange={(e) => setTripFormData({ ...tripFormData, startDate: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2"
                 />
                 <input
                   type="date"
-                  name="endDate"
-                  required
+                  value={tripFormData.endDate}
+                  onChange={(e) => setTripFormData({ ...tripFormData, endDate: e.target.value })}
                   className="w-full border border-gray-300 rounded px-3 py-2"
                 />
               </div>
               <textarea
-                name="notes"
                 placeholder="Notes"
+                value={tripFormData.notes}
+                onChange={(e) => setTripFormData({ ...tripFormData, notes: e.target.value })}
                 className="w-full border border-gray-300 rounded px-3 py-2"
                 rows="3"
               />
               <div className="flex gap-2">
                 <button
-                  type="submit"
-                  className="bg-teal-500 text-white px-6 py-2 rounded hover:bg-teal-600 font-semibold"
+                  onClick={handleAddTrip}
+                  className="flex-1 bg-teal-500 text-white px-6 py-2 rounded hover:bg-teal-600 font-semibold"
                 >
                   Add Trip
                 </button>
                 <button
-                  type="button"
-                  onClick={() => setShowAddTripForm(false)}
-                  className="bg-gray-400 text-white px-6 py-2 rounded hover:bg-gray-500"
+                  onClick={() => setShowTripForm(false)}
+                  className="flex-1 bg-gray-400 text-white px-6 py-2 rounded hover:bg-gray-500"
                 >
                   Cancel
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         )}
 
         <div className="space-y-4">
           {trips.map((trip) => (
             <div key={trip.id} className="bg-gradient-to-br from-teal-50 to-cyan-50 rounded-lg p-6 shadow border border-teal-200">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-800">{trip.name}</h3>
-                  <p className="text-sm text-gray-600">
-                    {trip.destination} • {new Date(trip.startDate).toLocaleDateString()} -{' '}
-                    {new Date(trip.endDate).toLocaleDateString()}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setTrips(trips.filter((t) => t.id !== trip.id))}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  <Trash2 size={20} />
-                </button>
-              </div>
-
-              {trip.notes && <p className="text-sm text-gray-700 mb-4 italic">{trip.notes}</p>}
-
-              <div className="mb-4">
-                <h4 className="font-semibold text-gray-800 mb-3">Expenses</h4>
-                {trip.expenses.length > 0 ? (
-                  <div className="space-y-2 mb-3">
-                    {trip.expenses.map((exp) => (
-                      <div
-                        key={exp.id}
-                        className="bg-white p-3 rounded flex items-center justify-between"
-                      >
-                        <div>
-                          <p className="font-semibold text-gray-800">{exp.description}</p>
-                          <p className="text-sm text-gray-600">
-                            {exp.category} • {exp.date} • {creditCards.find((c) => c.id === exp.card)?.name}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-lg font-bold text-gray-800">
-                            ₱{exp.amount.toFixed(2)}
-                          </p>
-                          <p className="text-xs text-gray-600">
-                            {exp.paid ? 'Paid' : 'Unpaid'}
-                          </p>
-                          <button
-                            onClick={() =>
-                              setTrips(
-                                trips.map((t) =>
-                                  t.id === trip.id
-                                    ? {
-                                        ...t,
-                                        expenses: t.expenses.filter((e) => e.id !== exp.id),
-                                      }
-                                    : t
-                                )
-                              )
-                            }
-                            className="text-red-600 hover:text-red-800 text-xs mt-1"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-gray-600 mb-3">No expenses yet</p>
-                )}
-
-                <button
-                  onClick={() => {
-                    setSelectedTrip(trip.id);
-                    setShowAddExpenseForm(!showAddExpenseForm || selectedTrip !== trip.id);
-                  }}
-                  className="bg-teal-500 text-white px-4 py-2 rounded text-sm hover:bg-teal-600 font-semibold flex items-center gap-2"
-                >
-                  <Plus size={16} /> Add Expense
-                </button>
-
-                {showAddExpenseForm && selectedTrip === trip.id && (
-                  <form onSubmit={handleAddExpense} className="mt-3 p-3 bg-white rounded border border-teal-200 space-y-2">
+              {editingTrip === trip.id ? (
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Trip Name"
+                    value={tripEditData.name || ''}
+                    onChange={(e) => setTripEditData({ ...tripEditData, name: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Destination"
+                    value={tripEditData.destination || ''}
+                    onChange={(e) => setTripEditData({ ...tripEditData, destination: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
                     <input
-                      type="text"
-                      name="description"
-                      placeholder="Description"
-                      required
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                      type="date"
+                      value={tripEditData.startDate || ''}
+                      onChange={(e) => setTripEditData({ ...tripEditData, startDate: e.target.value })}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
                     />
-                    <div className="grid grid-cols-2 gap-2">
-                      <input
-                        type="number"
-                        name="amount"
-                        placeholder="Amount"
-                        step="0.01"
-                        required
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                      />
-                      <select name="category" className="border border-gray-300 rounded px-3 py-2 text-sm">
-                        <option>Flight</option>
-                        <option>Hotel</option>
-                        <option>Baggage</option>
-                        <option>Travel Tax</option>
-                        <option>Activities</option>
-                        <option>Cash Allotment</option>
-                        <option>SIM Card</option>
-                        <option>Food</option>
-                        <option>Transport</option>
-                        <option>Shopping</option>
-                        <option>Insurance</option>
-                        <option>Other</option>
-                      </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <select name="card" className="border border-gray-300 rounded px-3 py-2 text-sm">
-                        {creditCards.map((card) => (
-                          <option key={card.id} value={card.id}>
-                            {card.name.substring(0, 15)}
-                          </option>
-                        ))}
-                        <option value="cash">Cash</option>
-                      </select>
-                      <input
-                        type="date"
-                        name="date"
-                        className="border border-gray-300 rounded px-3 py-2 text-sm"
-                      />
-                    </div>
-                    <label className="flex items-center gap-2">
-                      <input type="checkbox" name="paid" />
-                      <span className="text-sm text-gray-700">Paid</span>
-                    </label>
-                    <textarea
-                      name="notes"
-                      placeholder="Notes"
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                      rows="2"
+                    <input
+                      type="date"
+                      value={tripEditData.endDate || ''}
+                      onChange={(e) => setTripEditData({ ...tripEditData, endDate: e.target.value })}
+                      className="w-full border border-gray-300 rounded px-3 py-2"
                     />
+                  </div>
+                  <textarea
+                    placeholder="Notes"
+                    value={tripEditData.notes || ''}
+                    onChange={(e) => setTripEditData({ ...tripEditData, notes: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    rows="3"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSaveTripEdit(trip.id)}
+                      className="flex-1 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 font-semibold"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingTrip(null)}
+                      className="flex-1 bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-800">{trip.name}</h3>
+                      <p className="text-sm text-gray-600">
+                        {trip.destination} • {new Date(trip.startDate).toLocaleDateString()} -{' '}
+                        {new Date(trip.endDate).toLocaleDateString()}
+                      </p>
+                    </div>
                     <div className="flex gap-2">
                       <button
-                        type="submit"
-                        className="bg-teal-500 text-white px-4 py-2 rounded text-sm hover:bg-teal-600 font-semibold"
+                        onClick={() => {
+                          setEditingTrip(trip.id);
+                          setTripEditData({
+                            name: trip.name,
+                            destination: trip.destination,
+                            startDate: trip.startDate,
+                            endDate: trip.endDate,
+                            notes: trip.notes,
+                          });
+                        }}
+                        className="text-blue-600 hover:text-blue-800"
                       >
-                        Add Expense
+                        <Edit2 size={20} />
                       </button>
                       <button
-                        type="button"
-                        onClick={() => setShowAddExpenseForm(false)}
-                        className="bg-gray-400 text-white px-4 py-2 rounded text-sm hover:bg-gray-500"
+                        onClick={() => setTrips(trips.filter((t) => t.id !== trip.id))}
+                        className="text-red-600 hover:text-red-800"
                       >
-                        Cancel
+                        <Trash2 size={20} />
                       </button>
                     </div>
-                  </form>
-                )}
-              </div>
+                  </div>
+
+                  {trip.notes && <p className="text-sm text-gray-700 mb-4 italic">{trip.notes}</p>}
+
+                  <div className="mb-4">
+                    <h4 className="font-semibold text-gray-800 mb-3">Expenses</h4>
+                    {trip.expenses.length > 0 ? (
+                      <div className="space-y-2 mb-3">
+                        {trip.expenses.map((exp) => (
+                          <div
+                            key={exp.id}
+                            className="bg-white p-3 rounded flex items-center justify-between"
+                          >
+                            <div>
+                              <p className="font-semibold text-gray-800">{exp.description}</p>
+                              <p className="text-sm text-gray-600">
+                                {exp.category} • {exp.date} • {creditCards.find((c) => c.id === exp.card)?.name || 'Cash'}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-lg font-bold text-gray-800">
+                                ₱{exp.amount.toFixed(2)}
+                              </p>
+                              <button
+                                onClick={() => {
+                                  setTrips(
+                                    trips.map((t) =>
+                                      t.id === trip.id
+                                        ? {
+                                            ...t,
+                                            expenses: t.expenses.filter((e) => e.id !== exp.id),
+                                          }
+                                        : t
+                                    )
+                                  );
+                                  if (exp.card !== 'cash') {
+                                    setCreditCards(
+                                      creditCards.map((card) =>
+                                        card.id === exp.card
+                                          ? { ...card, balance: Math.max(0, card.balance - exp.amount) }
+                                          : card
+                                      )
+                                    );
+                                  }
+                                }}
+                                className="text-red-600 hover:text-red-800 text-xs mt-1"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-600 mb-3">No expenses yet</p>
+                    )}
+
+                    {showExpenseForm === trip.id ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          handleAddExpense(trip.id);
+                        }}
+                        className="p-3 bg-white rounded border border-teal-200 space-y-2"
+                      >
+                        <input
+                          type="text"
+                          placeholder="Description"
+                          value={expenseFormData.description}
+                          onChange={(e) => setExpenseFormData({ ...expenseFormData, description: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="Amount"
+                            value={expenseFormData.amount}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === '' || val === '.' || /^\d*\.?\d*$/.test(val)) {
+                                setExpenseFormData({ ...expenseFormData, amount: val });
+                              }
+                            }}
+                            className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                          />
+                          <select
+                            value={expenseFormData.category}
+                            onChange={(e) => setExpenseFormData({ ...expenseFormData, category: e.target.value })}
+                            className="border border-gray-300 rounded px-3 py-2 text-sm"
+                          >
+                            <option>Flight</option>
+                            <option>Hotel</option>
+                            <option>Baggage</option>
+                            <option>Travel Tax</option>
+                            <option>Activities</option>
+                            <option>Cash Allotment</option>
+                            <option>SIM Card</option>
+                            <option>Food</option>
+                            <option>Transport</option>
+                            <option>Shopping</option>
+                            <option>Insurance</option>
+                            <option>Other</option>
+                          </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <select
+                            value={expenseFormData.card}
+                            onChange={(e) => setExpenseFormData({ ...expenseFormData, card: e.target.value })}
+                            className="border border-gray-300 rounded px-3 py-2 text-sm"
+                          >
+                            {creditCards.map((card) => (
+                              <option key={card.id} value={card.id}>
+                                {card.name.substring(0, 15)}
+                              </option>
+                            ))}
+                            <option value="cash">Cash</option>
+                          </select>
+                          <input
+                            type="date"
+                            value={expenseFormData.date}
+                            onChange={(e) => setExpenseFormData({ ...expenseFormData, date: e.target.value })}
+                            className="border border-gray-300 rounded px-3 py-2 text-sm"
+                          />
+                        </div>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={expenseFormData.paid}
+                            onChange={(e) => setExpenseFormData({ ...expenseFormData, paid: e.target.checked })}
+                          />
+                          <span className="text-sm text-gray-700">Paid</span>
+                        </label>
+                        <textarea
+                          placeholder="Notes"
+                          value={expenseFormData.notes}
+                          onChange={(e) => setExpenseFormData({ ...expenseFormData, notes: e.target.value })}
+                          className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                          rows="2"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="submit"
+                            className="flex-1 bg-teal-500 text-white px-4 py-2 rounded text-sm hover:bg-teal-600 font-semibold"
+                          >
+                            Add Expense
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowExpenseForm(null)}
+                            className="flex-1 bg-gray-400 text-white px-4 py-2 rounded text-sm hover:bg-gray-500"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <button
+                        onClick={() => setShowExpenseForm(trip.id)}
+                        className="bg-teal-500 text-white px-4 py-2 rounded text-sm hover:bg-teal-600 font-semibold flex items-center gap-2"
+                      >
+                        <Plus size={16} /> Add Expense
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -2235,19 +2733,17 @@ const MyLedger = () => {
             {days.map((day, idx) => {
               if (!day) return <div key={`empty-${idx}`} className="aspect-square" />;
 
-              const dateStr = `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
               const hasEvent = selectedDate === day;
               const payDays = getPayDayDates(calendarMonth, calendarYear);
               const isPayDay = payDays.includes(day);
               const isQuarterlyGrocery = [2, 5, 8, 11].includes(calendarMonth) && day === 30;
 
-              // Count events for this day
               let eventCount = 0;
               if (isPayDay) eventCount++;
               if (isQuarterlyGrocery) eventCount++;
 
               subscriptions.forEach((sub) => {
-                if (sub.day === day) eventCount++;
+                if (sub.day === day && sub.status === 'Active') eventCount++;
               });
               fixedBills.forEach((bill) => {
                 if (bill.day === day) eventCount++;
@@ -2266,7 +2762,7 @@ const MyLedger = () => {
                 <button
                   key={day}
                   onClick={() => handleDateClick(day)}
-                  className={`aspect-square p-2 rounded border-2 transition ${
+                  className={`aspect-square p-2 rounded border-2 transition text-xs ${
                     hasEvent
                       ? 'border-pink-500 bg-pink-100'
                       : eventCount > 0
@@ -2276,7 +2772,7 @@ const MyLedger = () => {
                 >
                   <div className="text-sm font-bold text-gray-800">{day}</div>
                   {eventCount > 0 && (
-                    <div className="text-xs text-pink-600 font-semibold">{eventCount} event{eventCount > 1 ? 's' : ''}</div>
+                    <div className="text-xs text-pink-600 font-semibold">{eventCount}</div>
                   )}
                 </button>
               );
@@ -2284,7 +2780,6 @@ const MyLedger = () => {
           </div>
         </div>
 
-        {/* Selected Date Details */}
         {selectedDate && selectedDateEvents.length > 0 && (
           <div className="bg-gradient-to-br from-pink-50 to-blue-50 rounded-lg p-6 shadow border border-pink-200">
             <h3 className="text-lg font-bold text-gray-800 mb-4">
@@ -2314,7 +2809,6 @@ const MyLedger = () => {
               ))}
             </div>
 
-            {/* Debt Forecast */}
             <div className="mt-4 p-4 bg-white rounded border border-gray-300">
               <h4 className="font-semibold text-gray-800 mb-2">Debt Forecast</h4>
               <div className="space-y-2 text-sm">
@@ -2322,12 +2816,10 @@ const MyLedger = () => {
                   const forecast = calculateCardForecast(card, new Date(calendarYear, calendarMonth, selectedDate));
                   const suggested = calculateSuggestedPayments()[card.id] || card.minPayment;
                   return (
-                    <div key={card.id} className="flex justify-between">
-                      <div>
-                        <p className="font-semibold text-gray-800">{card.name}</p>
-                        <p className="text-xs text-gray-600">Forecasted: ₱{forecast.toFixed(2)}</p>
-                        <p className="text-xs text-gray-600">Suggested payment: ₱{suggested.toFixed(2)}</p>
-                      </div>
+                    <div key={card.id}>
+                      <p className="font-semibold text-gray-800">{card.name}</p>
+                      <p className="text-xs text-gray-600">Forecasted: ₱{forecast.toFixed(2)}</p>
+                      <p className="text-xs text-gray-600">Suggested payment: ₱{suggested.toFixed(2)}</p>
                     </div>
                   );
                 })}
@@ -2365,7 +2857,6 @@ const MyLedger = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-white to-blue-50 relative overflow-hidden">
-      {/* Sakura Background */}
       {sakuraPetals.map((petal) => (
         <div
           key={petal.id}
@@ -2383,7 +2874,6 @@ const MyLedger = () => {
       ))}
 
       <div className="relative z-10">
-        {/* Header */}
         <header className="bg-gradient-to-r from-pink-200 via-purple-100 to-blue-200 shadow-md sticky top-0">
           <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -2403,7 +2893,6 @@ const MyLedger = () => {
           </div>
         </header>
 
-        {/* Navigation Tabs */}
         <nav className="bg-white border-b border-pink-200 sticky top-16 z-20">
           <div className="max-w-7xl mx-auto px-4 flex flex-wrap gap-2 py-3">
             {[
@@ -2432,7 +2921,6 @@ const MyLedger = () => {
           </div>
         </nav>
 
-        {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 py-8">
           {activeTab === 'dashboard' && <DashboardTab />}
           {activeTab === 'calendar' && <CalendarTab />}
