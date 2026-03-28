@@ -402,6 +402,11 @@ const MyLedger = () => {
   const deposits = selectedCycle ? Number(selectedCycle.inboundCash.deposits) || 0 : 0;
   const refunds = selectedCycle ? Number(selectedCycle.inboundCash.refunds) || 0 : 0;
   const totalLeft = selectedCycle ? Number(selectedCycle.amount) - totalPayments - totalBills - withdrawals - fees + deposits + refunds : 0;
+  const totalForecastedDebt = selectedCycle ? creditCards.reduce(function(s, card) {
+    var pmt = selectedCycle.payments.find(function(p) { return p.cardId === card.id; });
+    var pmtAmt = Number(pmt && pmt.amount ? pmt.amount : 0) || 0;
+    return s + Math.max(0, Number(card.balance) - pmtAmt);
+  }, 0) : 0;
 
   // ===== RETURN & TAB NAVIGATION =====
   return (
@@ -415,7 +420,7 @@ const MyLedger = () => {
       {/* Tab Navigation */}
       <div className="max-w-7xl mx-auto mb-6">
         <div className="flex gap-2 flex-wrap border-b border-gray-300">
-          {['dashboard', 'creditcards', 'installments', 'grocery', 'purchases', 'travel', 'calendar'].map(tab => (
+          {[['dashboard','Dashboard'], ['creditcards','Credit Cards'], ['installments','Installments'], ['grocery','Grocery'], ['purchases','Purchases'], ['travel','Travel'], ['calendar','Calendar']].map(([tab, label]) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -425,7 +430,7 @@ const MyLedger = () => {
                   : 'text-gray-600 hover:text-blue-500'
               }`}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1).replace(/([a-z])([A-Z])/g, '$1 $2')}
+              {label}
             </button>
           ))}
         </div>
@@ -2464,11 +2469,7 @@ const MyLedger = () => {
                     <div className="mt-4 bg-blue-50 border-2 border-blue-200 rounded p-4">
                       <p className="text-gray-600 text-sm mb-1">Total Forecasted Debt</p>
                       <p className="text-2xl font-bold text-blue-600">
-                        ₱{creditCards.reduce((s, card) => {
-                          const payment = selectedCycle.payments.find(p => p.cardId === card.id);
-                          const paymentAmount = Number(payment?.amount) || 0;
-                          return s + Math.max(0, Number(card.balance) - paymentAmount);
-                        }, 0).toLocaleString()}
+                        ₱{totalForecastedDebt.toLocaleString()}
                       </p>
                     </div>
                   </div>
